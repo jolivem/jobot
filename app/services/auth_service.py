@@ -1,0 +1,55 @@
+import secrets
+from sqlalchemy.orm import Session
+from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
+from app.repositories.user_repo import UserRepository
+from app.repositories.refresh_token_repo import RefreshTokenRepository
+
+class AuthService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.users = UserRepository(db)
+        self.refresh_repo = RefreshTokenRepository(db)
+
+    def register(self, email: str, password: str, role: str = "user"):
+        if self.users.get_by_email(email):
+            raise ValueError("Email already registered")
+        user = self.users.create(email=email, password_hash=hash_password(password), role=role)
+        return user
+
+    def login(self, email: str, password: str) -> dict:
+        user = self.users.get_by_email(email)
+        if not user or not verify_password(password, user.password_hash):
+            raise ValueError("Invalid credentials")
+
+        jti = secrets.token_hex(16)
+        self.refresh_repo.store(user_id=user.id, jti=jti)
+
+        return {
+            "access_token": create_access_token(str(user.id), user.role),
+            "refresh_token": create_refresh_token(str(user.id), user.role, jti),
+            "token_type": "bearer",
+        }
+
+    def refresh(self, refresh_token: str) -> dict:
+        payload = decode_token(refresh_token)
+        if payload.get("type") != "refresh":
+            raise ValueError("Invalid token type")
+        jti = payload.get("jti")
+        if not jti or self.refresh_repo.is_revoked(jti):
+            raise ValueError("Refresh token revoked")
+
+        user_id = int(payload["sub"])
+        user = self.users.get_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        # Rotate refresh token
+        self.refresh_repo.revoke(jti)
+        new_jti = secrets.token_hex(16)
+        self.refresh_repo.store(user_id=user.id, jti=new_jti)
+
+        return {
+            "access_token": create_access_token(str(user.id), user.role),
+            "refresh_token": create_refresh_token(str(user.id), user.role, new_jti),
+            "token_type": "bearer",
+        }

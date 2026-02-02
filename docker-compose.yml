@@ -1,0 +1,62 @@
+services:
+  mariadb:
+    image: mariadb:10.6
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  api:
+    build: .
+    env_file: .env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "
+      alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+
+  worker:
+    build: .
+    env_file: .env
+    depends_on:
+      - redis
+      - mariadb
+    command: celery -A app.workers.celery_app.celery worker -l INFO
+
+  beat:
+    build: .
+    env_file: .env
+    depends_on:
+      - redis
+      - mariadb
+    command: celery -A app.workers.celery_app.celery beat -l INFO
+
+volumes:
+  mariadb_data:
