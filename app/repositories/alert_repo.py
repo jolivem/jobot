@@ -45,7 +45,7 @@ class AlertRepository:
     def list_active(self) -> list[PriceAlert]:
         return self.db.query(PriceAlert).filter(PriceAlert.is_active == 1).all()
 
-    def mark_triggered(self, alert: PriceAlert, triggered_price: float) -> None:
+    def mark_triggered(self, alert: PriceAlert, triggered_price: float) -> AlertEvent:
         alert.is_active = 0
         ev = AlertEvent(
             alert_id=alert.id,
@@ -55,6 +55,8 @@ class AlertRepository:
         )
         self.db.add(ev)
         self.db.commit()
+        self.db.refresh(ev)
+        return ev
 
     def list_events_by_user(self, user_id: int) -> list[AlertEvent]:
         return self.db.query(AlertEvent).filter(AlertEvent.user_id == user_id).order_by(AlertEvent.id.desc()).all()

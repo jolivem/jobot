@@ -2,7 +2,7 @@ import httpx
 from app.core.config import settings
 
 class BinancePriceService:
-    """Public endpoints only: no API keys needed. Safe for admin to fetch/cached prices."""
+    """Public endpoints only: no API keys needed."""
     def __init__(self):
         self.base_url = settings.BINANCE_BASE_URL.rstrip("/")
         self.client = httpx.Client(timeout=10.0)

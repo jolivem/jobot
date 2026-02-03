@@ -1,14 +1,15 @@
-# Iaco Binance Portfolio API (Production-ready starter)
+# Jobot API (Production-ready starter)
 
-## What you get
+## Included
 - FastAPI REST API
 - MariaDB (SQLAlchemy 2.0)
 - Alembic migrations
 - JWT auth (access + refresh, refresh rotation)
 - Roles: `admin` and `user`
-- Portfolio management per user
+- Portfolio management per user + valuation
 - Price alerts per user (Celery + Redis beat/worker checks alerts)
 - Binance public price endpoint integration (no API keys required)
+- ✅ Unit tests with pytest (SQLite in-memory)
 
 ## Quick start (Docker)
 1. Copy env:
@@ -22,16 +23,24 @@
 3. Open docs:
    - http://localhost:8000/docs
 
+## Run unit tests (local)
+> Tests run on SQLite in-memory (no MariaDB/Redis needed)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+pytest -q
+```
+
 ## Create an admin user
 Registration endpoint creates `user` role by default.
-To create an admin quickly, you can either:
-- update `users.role` in DB to `admin`, OR
-- modify `/auth/register` to accept role only for internal setup.
-
-Example SQL:
+To create an admin quickly:
 ```sql
-UPDATE users SET role='admin' WHERE email='admin@iaco.local';
+UPDATE users SET role='admin' WHERE email='admin@jobot.local';
 ```
+
+Then re-login to get an access token with the `admin` role claim.
 
 ## Main endpoints
 ### Auth
@@ -59,6 +68,8 @@ UPDATE users SET role='admin' WHERE email='admin@iaco.local';
 - DELETE `/alerts/{alert_id}`
 - GET `/alerts/events`
 
-## Notes
-- Alert checking interval: 30 seconds (`app/workers/celery_app.py`).
-- Notifications: stored as `alert_events` (you can plug email/push/webhook later).
+## Start
+### Application
+uvicorn app.main:app --reload --port 8000
+
+

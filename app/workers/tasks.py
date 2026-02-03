@@ -16,7 +16,6 @@ def check_price_alerts():
             try:
                 price = binance.get_price(a.symbol)
             except Exception:
-                # If Binance is temporarily unavailable, skip this round
                 continue
 
             hit = (price >= a.target_price) if a.direction == "above" else (price <= a.target_price)

@@ -18,6 +18,7 @@ class AlertRead(BaseModel):
 class AlertEventRead(BaseModel):
     id: int
     alert_id: int
+    user_id: int
     symbol: str
     triggered_price: float
 

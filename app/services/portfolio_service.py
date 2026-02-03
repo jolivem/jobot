@@ -3,9 +3,9 @@ from app.repositories.portfolio_repo import PortfolioRepository
 from app.services.binance_price_service import BinancePriceService
 
 class PortfolioService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, price_service: BinancePriceService | None = None):
         self.repo = PortfolioRepository(db)
-        self.prices = BinancePriceService()
+        self.prices = price_service or BinancePriceService()
 
     def list_assets(self, user_id: int):
         return self.repo.list_by_user(user_id)

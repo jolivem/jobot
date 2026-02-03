@@ -4,10 +4,10 @@ from app.core.logging import setup_logging
 
 from app.api.routes.health import router as health_router
 from app.api.routes.auth import router as auth_router
-from app.api.routes.admin import router as admin_router
 from app.api.routes.prices import router as prices_router
 from app.api.routes.portfolio import router as portfolio_router
 from app.api.routes.alerts import router as alerts_router
+from app.api.routes.admin import router as admin_router
 
 def create_app() -> FastAPI:
     setup_logging()
