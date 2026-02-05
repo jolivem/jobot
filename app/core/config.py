@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     JWT_ALG: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 15
     REFRESH_TOKEN_DAYS: int = 14
+    ENCRYPTION_KEY: str  # Fernet key for encrypting sensitive data (API keys)
 
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306

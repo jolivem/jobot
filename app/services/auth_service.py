@@ -1,6 +1,7 @@
 import secrets
 from sqlalchemy.orm import Session
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
+from app.core.encryption import encrypt
 from app.repositories.user_repo import UserRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
 
@@ -80,5 +81,11 @@ class AuthService:
         # Hash password if provided
         if "password" in data:
             data["password_hash"] = hash_password(data.pop("password"))
+
+        # Encrypt Binance API keys
+        if "binance_api_key" in data and data["binance_api_key"]:
+            data["binance_api_key"] = encrypt(data["binance_api_key"])
+        if "binance_api_secret" in data and data["binance_api_secret"]:
+            data["binance_api_secret"] = encrypt(data["binance_api_secret"])
 
         return self.users.update(user_id, **data)

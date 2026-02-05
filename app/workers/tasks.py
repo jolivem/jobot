@@ -8,6 +8,7 @@ from app.services.binance_price_service import BinancePriceService
 from app.services.binance_trade_service import BinanceTradeService
 from app.services.trading_strategy import decide_trade
 from app.core.cache import RedisCache
+from app.core.encryption import decrypt
 import logging
 
 logger = logging.getLogger(__name__)
@@ -98,9 +99,11 @@ def run_trading_bot(self, bot_id: int):
                 time.sleep(1)
                 continue
 
-            # Execute trade on Binance
+            # Execute trade on Binance (decrypt API keys)
             try:
-                trade_service = BinanceTradeService(user.binance_api_key, user.binance_api_secret)
+                api_key = decrypt(user.binance_api_key)
+                api_secret = decrypt(user.binance_api_secret)
+                trade_service = BinanceTradeService(api_key, api_secret)
                 trade_service.place_order(bot.symbol, side.upper(), quantity)
             except Exception as e:
                 logger.error(f"Bot {bot_id}: failed to execute {side} order: {e}")

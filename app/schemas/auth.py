@@ -1,12 +1,18 @@
 from pydantic import BaseModel, EmailStr, Field
+from app.core.encryption import decrypt
 
 
-def _mask_secret(value: str | None) -> str | None:
-    if not value:
+def _decrypt_and_mask(ciphertext: str | None) -> str | None:
+    """Decrypt a Fernet ciphertext, then mask all but the last 4 chars."""
+    if not ciphertext:
         return None
-    if len(value) <= 4:
+    try:
+        plaintext = decrypt(ciphertext)
+    except Exception:
         return "****"
-    return "*" * (len(value) - 4) + value[-4:]
+    if len(plaintext) <= 4:
+        return "****"
+    return "*" * (len(plaintext) - 4) + plaintext[-4:]
 
 
 class RegisterRequest(BaseModel):
@@ -52,8 +58,8 @@ class MeResponse(BaseModel):
             username=user.username,
             first_name=user.first_name,
             last_name=user.last_name,
-            binance_api_key=_mask_secret(user.binance_api_key),
-            binance_api_secret=_mask_secret(user.binance_api_secret),
+            binance_api_key=_decrypt_and_mask(user.binance_api_key),
+            binance_api_secret=_decrypt_and_mask(user.binance_api_secret),
         )
 
 
