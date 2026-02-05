@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.api.deps import get_current_user
 from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead
+from app.schemas.trade import TradeRead
 from app.services.trading_bot_service import TradingBotService
+from app.repositories.trade_repo import TradeRepository
 
 router = APIRouter(prefix="/trading-bots", tags=["trading-bots"])
 
@@ -86,3 +88,13 @@ def delete_bot(
     if not ok:
         raise HTTPException(status_code=404, detail="Trading bot not found")
     return {"deleted": True}
+
+
+@router.get("/{bot_id}/trades", response_model=list[TradeRead])
+def list_trades(
+    bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
+    bot = TradingBotService(db).get(user.id, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Trading bot not found")
+    return TradeRepository(db).list_by_bot(bot_id)

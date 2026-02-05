@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.trading_bot import TradingBot
+from app.models.user import User
 
 
 class TradingBotRepository:
@@ -85,3 +86,18 @@ class TradingBotRepository:
             .all()
         )
         return [row[0] for row in result]
+
+    def get_active_by_id(self, bot_id: int) -> TradingBot | None:
+        """Get an active bot by id (no user filter, for worker usage)"""
+        return (
+            self.db.query(TradingBot)
+            .filter(TradingBot.id == bot_id, TradingBot.is_active == 1)
+            .first()
+        )
+
+    def get_user_for_bot(self, bot_id: int) -> User | None:
+        """Get the user who owns a bot"""
+        row = self.db.query(TradingBot).filter(TradingBot.id == bot_id).first()
+        if not row:
+            return None
+        return self.db.query(User).filter(User.id == row.user_id).first()
