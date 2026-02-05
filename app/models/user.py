@@ -2,6 +2,7 @@ from sqlalchemy import String, Integer, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -9,4 +10,10 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="user")  # 'admin' | 'user'
+    username: Mapped[str | None] = mapped_column(String(100), unique=True, index=True, nullable=True)
+    first_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    binance_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    binance_api_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

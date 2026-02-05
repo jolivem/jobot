@@ -21,3 +21,10 @@ class RefreshTokenRepository:
         if row:
             row.is_revoked = 1
             self.db.commit()
+
+    def revoke_all_for_user(self, user_id: int) -> None:
+        self.db.query(RefreshToken).filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.is_revoked == 0,
+        ).update({"is_revoked": 1})
+        self.db.commit()

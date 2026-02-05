@@ -4,6 +4,7 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from app.repositories.user_repo import UserRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
 
+
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
@@ -53,3 +54,31 @@ class AuthService:
             "refresh_token": create_refresh_token(str(user.id), user.role, new_jti),
             "token_type": "bearer",
         }
+
+    def logout(self, refresh_token: str) -> None:
+        payload = decode_token(refresh_token)
+        if payload.get("type") != "refresh":
+            raise ValueError("Invalid token type")
+        jti = payload.get("jti")
+        if jti:
+            self.refresh_repo.revoke(jti)
+
+    def update_profile(self, user_id: int, **data):
+        # Validate email uniqueness
+        if "email" in data:
+            existing = self.users.get_by_email(data["email"])
+            if existing and existing.id != user_id:
+                raise ValueError("Email already in use")
+            data["email"] = data["email"].lower()
+
+        # Validate username uniqueness
+        if "username" in data:
+            existing = self.users.get_by_username(data["username"])
+            if existing and existing.id != user_id:
+                raise ValueError("Username already in use")
+
+        # Hash password if provided
+        if "password" in data:
+            data["password_hash"] = hash_password(data.pop("password"))
+
+        return self.users.update(user_id, **data)

@@ -5,7 +5,7 @@ services:
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_ROOT_PASSWORD: root_password
+      MARIADB_ROOT_PASSWORD: root
     ports:
       - "3306:3306"
     volumes:

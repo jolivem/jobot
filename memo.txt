@@ -1,0 +1,26 @@
+wsl install:
+docker run --name mariadbtest -e MYSQL_ROOT_PASSWORD=mypass -p 3306:3306 -d docker.io/library/mariadb:10.6
+mysql -h 172.22.84.222 -u root -p
+sudo docker run -d --name redis -p 6379:6379 redis:7-alpine
+
+docker:
+docker start mariadbtest
+docker start redis
+
+env start:
+cd ~/github/jobot
+source .venv/bin/activate
+
+server web;
+uvicorn app.main:app --reload
+http://localhost:8000/health
+http://localhost:8000/docs
+
+
+wsl jobot:
+alembic upgrade head
+python -m app.workers.websocket_worker &
+# Worker
+celery -A app.workers.celery_app worker --loglevel=info &
+# Beat (scheduler)
+celery -A app.workers.celery_app beat --loglevel=info &
