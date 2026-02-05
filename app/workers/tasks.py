@@ -2,7 +2,6 @@ import time
 from sqlalchemy.orm import Session
 from app.workers.celery_app import celery
 from app.core.db import SessionLocal
-from app.repositories.alert_repo import AlertRepository
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 from app.services.binance_price_service import BinancePriceService
@@ -40,38 +39,6 @@ def cache_prices():
 
     except Exception as e:
         logger.error(f"Error caching prices: {e}", exc_info=True)
-    finally:
-        db.close()
-
-
-@celery.task(name="app.workers.tasks.check_price_alerts")
-def check_price_alerts():
-    """Check price alerts using cached prices with fallback to direct API"""
-    db: Session = SessionLocal()
-    try:
-        repo = AlertRepository(db)
-        cache = RedisCache()
-        binance = BinancePriceService()
-
-        alerts = repo.list_active()
-        for a in alerts:
-            try:
-                # Try cache first
-                price = cache.get_price(a.symbol)
-
-                # Fallback to direct API if cache miss
-                if price is None:
-                    logger.warning(f"Cache miss for {a.symbol}, falling back to Binance API")
-                    price = binance.get_price(a.symbol)
-
-            except Exception as e:
-                logger.error(f"Error getting price for {a.symbol}: {e}")
-                continue
-
-            hit = (price >= a.target_price) if a.direction == "above" else (price <= a.target_price)
-            if hit:
-                repo.mark_triggered(a, price)
-
     finally:
         db.close()
 

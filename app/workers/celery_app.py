@@ -8,11 +8,6 @@ celery = Celery(
     include=["app.workers.tasks"],
 )
 
-# Check price alerts every 30 seconds
-# Note: Price caching is now handled by WebSocket worker (websocket_worker.py)
-celery.conf.beat_schedule = {
-    "check-price-alerts-every-30s": {
-        "task": "app.workers.tasks.check_price_alerts",
-        "schedule": 30.0,
-    }
-}
+# Note: Price caching is handled by WebSocket worker (websocket_worker.py)
+# Trading bot tasks are launched on-demand (one long-running task per active bot)
+celery.conf.beat_schedule = {}
