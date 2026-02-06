@@ -15,5 +15,6 @@ class User(Base):
     last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     binance_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     binance_api_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_verified: Mapped[int] = mapped_column(Integer, default=0)  # 0=not verified, 1=verified
     created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

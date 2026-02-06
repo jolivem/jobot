@@ -58,5 +58,14 @@ services:
       - mariadb
     command: celery -A app.workers.celery_app.celery beat -l INFO
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+    depends_on:
+      - api
+
 volumes:
   mariadb_data:
