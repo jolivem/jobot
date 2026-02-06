@@ -26,3 +26,9 @@ def create_refresh_token(sub: str, role: str, jti: str) -> str:
 
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
+
+
+def create_verification_token(user_id: int) -> str:
+    exp = _now_utc() + timedelta(hours=24)
+    payload = {"sub": str(user_id), "type": "verify", "exp": exp}
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)

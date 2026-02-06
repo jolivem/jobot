@@ -21,6 +21,15 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/verify/{token}")
+def verify_email(token: str, db: Session = Depends(get_db)):
+    try:
+        AuthService(db).verify_email(token)
+        return {"verified": True}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     try:

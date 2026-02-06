@@ -31,3 +31,12 @@ class UserRepository:
         self.db.commit()
         self.db.refresh(user)
         return user
+
+    def verify(self, user_id: int) -> User | None:
+        user = self.get_by_id(user_id)
+        if not user:
+            return None
+        user.is_verified = 1
+        self.db.commit()
+        self.db.refresh(user)
+        return user

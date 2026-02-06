@@ -1,9 +1,16 @@
 import secrets
+import logging
 from sqlalchemy.orm import Session
-from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
+from app.core.security import (
+    hash_password, verify_password, create_access_token,
+    create_refresh_token, decode_token, create_verification_token,
+)
 from app.core.encryption import encrypt
+from app.core.config import settings
 from app.repositories.user_repo import UserRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -16,12 +23,37 @@ class AuthService:
         if self.users.get_by_email(email):
             raise ValueError("Email already registered")
         user = self.users.create(email=email, password_hash=hash_password(password), role=role)
+
+        # Generate verification token and log the link
+        token = create_verification_token(user.id)
+        verify_url = f"http://localhost:3000/verify?token={token}"
+        logger.info(f"[EMAIL] Verification link for {email}: {verify_url}")
+
+        return user
+
+    def verify_email(self, token: str):
+        try:
+            payload = decode_token(token)
+        except Exception:
+            raise ValueError("Invalid or expired token")
+
+        if payload.get("type") != "verify":
+            raise ValueError("Invalid token type")
+
+        user_id = int(payload["sub"])
+        user = self.users.verify(user_id)
+        if not user:
+            raise ValueError("User not found")
+
         return user
 
     def login(self, email: str, password: str) -> dict:
         user = self.users.get_by_email(email)
         if not user or not verify_password(password, user.password_hash):
             raise ValueError("Invalid credentials")
+
+        if not user.is_verified:
+            raise ValueError("Email not verified")
 
         jti = secrets.token_hex(16)
         self.refresh_repo.store(user_id=user.id, jti=jti)
