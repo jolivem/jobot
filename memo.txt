@@ -1,11 +1,14 @@
-wsl install:
+docker install:
 docker run --name mariadbtest -e MYSQL_ROOT_PASSWORD=mypass -p 3306:3306 -d docker.io/library/mariadb:10.6
-mysql -h 172.22.84.222 -u root -p
 sudo docker run -d --name redis -p 6379:6379 redis:7-alpine
 
 docker:
 docker start mariadbtest
 docker start redis
+
+mysql:
+mysql -h 172.22.84.222 -u root -p
+mysql -h 172.22.84.222 -u root -p jobot -e "DESCRIBE trading_bots;"
 
 env start:
 cd ~/github/jobot
@@ -18,8 +21,8 @@ http://localhost:8000/docs
 
 frontend:
 cd frontend
-nvm use    # charge Node 22 depuis .nvmrc
-npm run dev  # → http://localhost:3000
+nvm use
+npm run dev
 
 wsl jobot:
 alembic upgrade head

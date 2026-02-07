@@ -68,3 +68,73 @@ export async function getMe(accessToken: string): Promise<UserResponse> {
   });
   return handleResponse<UserResponse>(response);
 }
+
+export interface UserUpdateRequest {
+  email?: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  password?: string;
+  binance_api_key?: string;
+  binance_api_secret?: string;
+}
+
+export async function updateMe(accessToken: string, data: UserUpdateRequest): Promise<UserResponse> {
+  const response = await fetch(`${API_URL}/auth/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<UserResponse>(response);
+}
+
+export async function logout(refreshToken: string): Promise<void> {
+  await fetch(`${API_URL}/auth/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+}
+
+export interface TradingBot {
+  id: number;
+  user_id: number;
+  symbol: string;
+  is_active: number;
+  max_price: number;
+  min_price: number;
+  total_amount: number;
+  sell_percentage: number;
+  buy_percentage: number;
+}
+
+export async function listBots(accessToken: string): Promise<TradingBot[]> {
+  const response = await fetch(`${API_URL}/trading-bots`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<TradingBot[]>(response);
+}
+
+export interface TradingBotCreate {
+  symbol: string;
+  max_price: number;
+  min_price: number;
+  total_amount: number;
+  sell_percentage: number;
+  buy_percentage: number;
+}
+
+export async function createBot(accessToken: string, data: TradingBotCreate): Promise<TradingBot> {
+  const response = await fetch(`${API_URL}/trading-bots`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<TradingBot>(response);
+}
