@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "dev"
     APP_NAME: str = "Jobot API"
     LOG_LEVEL: str = "INFO"
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     JWT_SECRET: str
     JWT_ALG: str = "HS256"

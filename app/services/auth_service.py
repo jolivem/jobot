@@ -20,13 +20,18 @@ class AuthService:
         self.refresh_repo = RefreshTokenRepository(db)
 
     def register(self, email: str, password: str, role: str = "user"):
-        if self.users.get_by_email(email):
-            raise ValueError("Email already registered")
-        user = self.users.create(email=email, password_hash=hash_password(password), role=role)
+        existing = self.users.get_by_email(email)
+        if existing:
+            if existing.is_verified:
+                raise ValueError("Email already registered")
+            # Allow re-registration for unverified accounts
+            user = self.users.update(existing.id, password_hash=hash_password(password))
+        else:
+            user = self.users.create(email=email, password_hash=hash_password(password), role=role)
 
         # Generate verification token and log the link
         token = create_verification_token(user.id)
-        verify_url = f"http://localhost:3000/verify?token={token}"
+        verify_url = f"http://localhost:3000/verify/{token}"
         logger.info(f"[EMAIL] Verification link for {email}: {verify_url}")
 
         return user
