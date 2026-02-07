@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMe, updateMe, UserResponse, UserUpdateRequest } from "@/lib/api";
+import { getMe, updateMe, verifyBinanceKeys, UserResponse, UserUpdateRequest } from "@/lib/api";
 
 export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -80,6 +81,23 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleVerifyBinance = async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    setError("");
+    setMessage("");
+    setVerifying(true);
+
+    try {
+      await verifyBinanceKeys(token);
+      setMessage("Binance API keys are valid!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to verify Binance keys");
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -198,6 +216,17 @@ export default function SettingsPage() {
               placeholder="Leave empty to keep current"
             />
           </div>
+
+          {user.binance_api_key && (
+            <button
+              type="button"
+              onClick={handleVerifyBinance}
+              disabled={verifying}
+              className="w-full py-2 px-4 border border-gray-300 dark:border-gray-700 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {verifying ? "Verifying..." : "Verify Binance Keys"}
+            </button>
+          )}
         </div>
 
         <button

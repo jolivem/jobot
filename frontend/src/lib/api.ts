@@ -91,6 +91,14 @@ export async function updateMe(accessToken: string, data: UserUpdateRequest): Pr
   return handleResponse<UserResponse>(response);
 }
 
+export async function verifyBinanceKeys(accessToken: string): Promise<{ valid: boolean }> {
+  const response = await fetch(`${API_URL}/auth/me/verify-binance`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<{ valid: boolean }>(response);
+}
+
 export async function logout(refreshToken: string): Promise<void> {
   await fetch(`${API_URL}/auth/logout`, {
     method: 'POST',

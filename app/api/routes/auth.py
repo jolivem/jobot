@@ -1,7 +1,15 @@
+import hashlib
+import hmac
+import time
+from urllib.parse import urlencode
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.config import settings
+from app.core.encryption import decrypt
 from app.schemas.auth import (
     RegisterRequest, LoginRequest, TokenResponse, RefreshRequest,
     MeResponse, LogoutRequest, UserUpdate,
@@ -69,3 +77,35 @@ def update_me(payload: UserUpdate, db: Session = Depends(get_db), user=Depends(g
         return MeResponse.from_user(updated)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/me/verify-binance")
+def verify_binance_keys(user=Depends(get_current_user)):
+    if not user.binance_api_key or not user.binance_api_secret:
+        raise HTTPException(status_code=400, detail="Binance API keys not configured")
+
+    try:
+        api_key = decrypt(user.binance_api_key)
+        api_secret = decrypt(user.binance_api_secret)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to decrypt API keys")
+
+    base_url = settings.BINANCE_BASE_URL.rstrip("/")
+    params = {"timestamp": int(time.time() * 1000)}
+    query = urlencode(params)
+    signature = hmac.new(api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
+    params["signature"] = signature
+
+    try:
+        r = httpx.get(
+            f"{base_url}/api/v3/account",
+            params=params,
+            headers={"X-MBX-APIKEY": api_key},
+            timeout=10.0,
+        )
+        if r.status_code != 200:
+            error_msg = r.json().get("msg", "Unknown error from Binance")
+            raise HTTPException(status_code=400, detail=f"Binance API error: {error_msg}")
+        return {"valid": True}
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=400, detail=f"Connection error: {str(e)}")
