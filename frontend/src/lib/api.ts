@@ -165,6 +165,38 @@ export async function fetchBotTrades(accessToken: string, botId: number): Promis
   return handleResponse<Trade[]>(response);
 }
 
+export interface TradingBotUpdate {
+  max_price?: number;
+  min_price?: number;
+  total_amount?: number;
+  sell_percentage?: number;
+  buy_percentage?: number;
+  is_active?: number;
+}
+
+export async function updateBot(accessToken: string, botId: number, data: TradingBotUpdate): Promise<TradingBot> {
+  const response = await fetch(`${API_URL}/trading-bots/${botId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<TradingBot>(response);
+}
+
+export async function deleteBot(accessToken: string, botId: number): Promise<void> {
+  const response = await fetch(`${API_URL}/trading-bots/${botId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new Error(error.detail || 'Failed to delete bot');
+  }
+}
+
 export async function createBot(accessToken: string, data: TradingBotCreate): Promise<TradingBot> {
   const response = await fetch(`${API_URL}/trading-bots`, {
     method: 'POST',

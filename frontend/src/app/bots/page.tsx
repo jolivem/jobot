@@ -3,7 +3,16 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { listBots, createBot, fetchUsdcSymbols, TradingBot, TradingBotCreate } from "@/lib/api";
+import {
+  listBots,
+  createBot,
+  updateBot,
+  deleteBot,
+  fetchUsdcSymbols,
+  TradingBot,
+  TradingBotCreate,
+  TradingBotUpdate,
+} from "@/lib/api";
 
 const emptyForm: TradingBotCreate = {
   symbol: "",
@@ -28,7 +37,19 @@ export default function BotsPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  // Edit state
+  const [editingBotId, setEditingBotId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<TradingBotUpdate>({});
+  const [editError, setEditError] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Toggle/delete loading state
+  const [togglingBotId, setTogglingBotId] = useState<number | null>(null);
+  const [deletingBotId, setDeletingBotId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   useEffect(() => {
     fetchUsdcSymbols()
@@ -50,7 +71,10 @@ export default function BotsPage() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setDropdownOpen(false);
       }
     };
@@ -72,7 +96,7 @@ export default function BotsPage() {
 
     try {
       const bot = await createBot(token, form);
-      setBots((prev) => [...prev, bot]);
+      setBots((prev) => [bot, ...prev]);
       setForm({ ...emptyForm });
       setSymbolSearch("");
       setShowForm(false);
@@ -80,6 +104,68 @@ export default function BotsPage() {
       setError(err instanceof Error ? err.message : "Failed to create bot");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggle = async (bot: TradingBot) => {
+    if (!token) return;
+    setTogglingBotId(bot.id);
+    try {
+      const newActive = bot.is_active ? 0 : 1;
+      const updated = await updateBot(token, bot.id, { is_active: newActive });
+      setBots((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to toggle bot");
+    } finally {
+      setTogglingBotId(null);
+    }
+  };
+
+  const handleDelete = async (botId: number) => {
+    if (!token) return;
+    setDeletingBotId(botId);
+    try {
+      await deleteBot(token, botId);
+      setBots((prev) => prev.filter((b) => b.id !== botId));
+      setConfirmDeleteId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete bot");
+    } finally {
+      setDeletingBotId(null);
+    }
+  };
+
+  const startEdit = (bot: TradingBot) => {
+    setEditingBotId(bot.id);
+    setEditForm({
+      max_price: bot.max_price,
+      min_price: bot.min_price,
+      total_amount: bot.total_amount,
+      buy_percentage: bot.buy_percentage,
+      sell_percentage: bot.sell_percentage,
+    });
+    setEditError("");
+  };
+
+  const cancelEdit = () => {
+    setEditingBotId(null);
+    setEditForm({});
+    setEditError("");
+  };
+
+  const handleEditSave = async (botId: number) => {
+    if (!token) return;
+    setEditError("");
+    setEditSaving(true);
+    try {
+      const updated = await updateBot(token, botId, editForm);
+      setBots((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+      setEditingBotId(null);
+      setEditForm({});
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to update bot");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -93,6 +179,9 @@ export default function BotsPage() {
 
   const inputClass =
     "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
+
+  const editInputClass =
+    "w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -138,7 +227,9 @@ export default function BotsPage() {
                 }}
                 onFocus={() => setDropdownOpen(true)}
                 className={inputClass}
-                placeholder={symbolsLoading ? "Loading pairs..." : "Search USDC pairs..."}
+                placeholder={
+                  symbolsLoading ? "Loading pairs..." : "Search USDC pairs..."
+                }
                 disabled={symbolsLoading}
                 autoComplete="off"
               />
@@ -165,7 +256,8 @@ export default function BotsPage() {
                         {sym}
                       </li>
                     ))}
-                  {symbols.filter((s) => s.includes(symbolSearch)).length === 0 && (
+                  {symbols.filter((s) => s.includes(symbolSearch)).length ===
+                    0 && (
                     <li className="px-4 py-3 text-sm text-gray-500">
                       No matching USDC pairs found
                     </li>
@@ -177,7 +269,10 @@ export default function BotsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="min_price" className="block text-sm font-medium mb-1">
+              <label
+                htmlFor="min_price"
+                className="block text-sm font-medium mb-1"
+              >
                 Min Price ($)
               </label>
               <input
@@ -185,13 +280,18 @@ export default function BotsPage() {
                 type="number"
                 step="any"
                 value={form.min_price || ""}
-                onChange={(e) => setForm({ ...form, min_price: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setForm({ ...form, min_price: parseFloat(e.target.value) || 0 })
+                }
                 className={inputClass}
                 required
               />
             </div>
             <div>
-              <label htmlFor="max_price" className="block text-sm font-medium mb-1">
+              <label
+                htmlFor="max_price"
+                className="block text-sm font-medium mb-1"
+              >
                 Max Price ($)
               </label>
               <input
@@ -199,7 +299,9 @@ export default function BotsPage() {
                 type="number"
                 step="any"
                 value={form.max_price || ""}
-                onChange={(e) => setForm({ ...form, max_price: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setForm({ ...form, max_price: parseFloat(e.target.value) || 0 })
+                }
                 className={inputClass}
                 required
               />
@@ -207,7 +309,10 @@ export default function BotsPage() {
           </div>
 
           <div>
-            <label htmlFor="total_amount" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="total_amount"
+              className="block text-sm font-medium mb-1"
+            >
               Total Amount ($)
             </label>
             <input
@@ -215,7 +320,12 @@ export default function BotsPage() {
               type="number"
               step="any"
               value={form.total_amount || ""}
-              onChange={(e) => setForm({ ...form, total_amount: parseFloat(e.target.value) || 0 })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  total_amount: parseFloat(e.target.value) || 0,
+                })
+              }
               className={inputClass}
               required
             />
@@ -223,7 +333,10 @@ export default function BotsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="buy_percentage" className="block text-sm font-medium mb-1">
+              <label
+                htmlFor="buy_percentage"
+                className="block text-sm font-medium mb-1"
+              >
                 Buy Percentage (%)
               </label>
               <input
@@ -233,13 +346,21 @@ export default function BotsPage() {
                 min="0"
                 max="100"
                 value={form.buy_percentage || ""}
-                onChange={(e) => setForm({ ...form, buy_percentage: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    buy_percentage: parseFloat(e.target.value) || 0,
+                  })
+                }
                 className={inputClass}
                 required
               />
             </div>
             <div>
-              <label htmlFor="sell_percentage" className="block text-sm font-medium mb-1">
+              <label
+                htmlFor="sell_percentage"
+                className="block text-sm font-medium mb-1"
+              >
                 Sell Percentage (%)
               </label>
               <input
@@ -249,7 +370,12 @@ export default function BotsPage() {
                 min="0"
                 max="100"
                 value={form.sell_percentage || ""}
-                onChange={(e) => setForm({ ...form, sell_percentage: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    sell_percentage: parseFloat(e.target.value) || 0,
+                  })
+                }
                 className={inputClass}
                 required
               />
@@ -298,35 +424,222 @@ export default function BotsPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400">Min Price</span>
-                  <p className="font-medium">${bot.min_price.toLocaleString()}</p>
+              {editingBotId === bot.id ? (
+                /* ─── Edit Mode ─── */
+                <div className="space-y-3">
+                  {editError && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg text-sm">
+                      {editError}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Min Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={editForm.min_price ?? ""}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            min_price: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className={editInputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Max Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={editForm.max_price ?? ""}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            max_price: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className={editInputClass}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      Amount ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={editForm.total_amount ?? ""}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          total_amount: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className={editInputClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Buy %
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="100"
+                        value={editForm.buy_percentage ?? ""}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            buy_percentage: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className={editInputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Sell %
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="100"
+                        value={editForm.sell_percentage ?? ""}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            sell_percentage: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className={editInputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditSave(bot.id)}
+                      disabled={editSaving}
+                      className="flex-1 py-2 px-3 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {editSaving ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="flex-1 py-2 px-3 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400">Max Price</span>
-                  <p className="font-medium">${bot.max_price.toLocaleString()}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400">Amount</span>
-                  <p className="font-medium">${bot.total_amount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400">Buy %</span>
-                  <p className="font-medium">{bot.buy_percentage}%</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400">Sell %</span>
-                  <p className="font-medium">{bot.sell_percentage}%</p>
-                </div>
-              </div>
+              ) : (
+                /* ─── View Mode ─── */
+                <>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Min Price
+                      </span>
+                      <p className="font-medium">
+                        ${bot.min_price.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Max Price
+                      </span>
+                      <p className="font-medium">
+                        ${bot.max_price.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Amount
+                      </span>
+                      <p className="font-medium">
+                        ${bot.total_amount.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Buy %
+                      </span>
+                      <p className="font-medium">{bot.buy_percentage}%</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Sell %
+                      </span>
+                      <p className="font-medium">{bot.sell_percentage}%</p>
+                    </div>
+                  </div>
 
-              <Link
-                href={`/trades?bot_id=${bot.id}`}
-                className="block text-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
-              >
-                View Trades
-              </Link>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleToggle(bot)}
+                      disabled={togglingBotId === bot.id}
+                      className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition disabled:opacity-50 ${
+                        bot.is_active
+                          ? "bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800"
+                          : "bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200 dark:border-green-800"
+                      }`}
+                    >
+                      {togglingBotId === bot.id
+                        ? "..."
+                        : bot.is_active
+                          ? "Stop"
+                          : "Start"}
+                    </button>
+                    <button
+                      onClick={() => startEdit(bot)}
+                      className="flex-1 py-2 px-3 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                    >
+                      Edit
+                    </button>
+                    {confirmDeleteId === bot.id ? (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleDelete(bot.id)}
+                          disabled={deletingBotId === bot.id}
+                          className="py-2 px-3 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                        >
+                          {deletingBotId === bot.id ? "..." : "Confirm"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="py-2 px-3 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(bot.id)}
+                        className="py-2 px-3 text-sm font-medium text-red-500 hover:text-red-600 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                        title="Delete bot"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+
+                  <Link
+                    href={`/trades?bot_id=${bot.id}`}
+                    className="block text-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                  >
+                    View Trades
+                  </Link>
+                </>
+              )}
             </div>
           ))}
         </div>

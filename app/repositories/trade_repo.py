@@ -26,6 +26,16 @@ class TradeRepository:
             .all()
         )
 
+    def delete_by_bot(self, trading_bot_id: int) -> int:
+        """Delete all trades for a bot. Returns count of deleted rows."""
+        count = (
+            self.db.query(Trade)
+            .filter(Trade.trading_bot_id == trading_bot_id)
+            .delete()
+        )
+        self.db.commit()
+        return count
+
     def list_by_bots(self, bot_ids: list[int], limit: int = 200) -> list[Trade]:
         """List recent trades across multiple bots."""
         if not bot_ids:
