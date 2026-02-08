@@ -87,6 +87,15 @@ class TradingBotRepository:
         )
         return [row[0] for row in result]
 
+    def list_active_ids(self) -> list[int]:
+        """Get all active bot IDs (for worker restart)"""
+        result = (
+            self.db.query(TradingBot.id)
+            .filter(TradingBot.is_active == 1)
+            .all()
+        )
+        return [row[0] for row in result]
+
     def get_active_by_id(self, bot_id: int) -> TradingBot | None:
         """Get an active bot by id (no user filter, for worker usage)"""
         return (

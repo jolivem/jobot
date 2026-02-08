@@ -28,9 +28,7 @@ docker start redisinsight
 
 backend:
 --------
-# Worker
 celery -A app.workers.celery_app worker --loglevel=info &
-# Beat (scheduler)
 celery -A app.workers.celery_app beat --loglevel=info &
 alembic upgrade head
 uvicorn app.main:app --reload
@@ -55,3 +53,7 @@ python -m app.workers.websocket_worker &
 celery -A app.workers.celery_app worker --loglevel=info &
 # Beat (scheduler)
 celery -A app.workers.celery_app beat --loglevel=info &
+
+
+clean:
+celery -A app.workers.celery_app control shutdown

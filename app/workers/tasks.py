@@ -42,6 +42,26 @@ def cache_prices():
         db.close()
 
 
+@celery.task(name="app.workers.tasks.restart_active_bots")
+def restart_active_bots():
+    """Restart trading bot tasks for all active bots in DB."""
+    db: Session = SessionLocal()
+    try:
+        bot_repo = TradingBotRepository(db)
+        bot_ids = bot_repo.list_active_ids()
+        if not bot_ids:
+            logger.info("No active bots to restart")
+            return
+        for bot_id in bot_ids:
+            run_trading_bot.delay(bot_id)
+            logger.info(f"Restarted trading bot task for bot_id={bot_id}")
+        logger.info(f"Restarted {len(bot_ids)} active bot(s)")
+    except Exception as e:
+        logger.error(f"Error restarting active bots: {e}", exc_info=True)
+    finally:
+        db.close()
+
+
 @celery.task(name="app.workers.tasks.run_trading_bot", bind=True)
 def run_trading_bot(self, bot_id: int):
     """Long-running task for a single trading bot (simulated mode).
@@ -80,6 +100,8 @@ def run_trading_bot(self, bot_id: int):
             # Read price from Redis
             price = cache.get_price(bot.symbol)
             if price is None:
+                if iteration % 30 == 0:
+                    logger.warning(f"Bot {bot_id}: no price in Redis for {bot.symbol}, waiting...")
                 iteration += 1
                 time.sleep(1)
                 continue
