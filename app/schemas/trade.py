@@ -12,3 +12,7 @@ class TradeRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TradeWithSymbol(TradeRead):
+    symbol: str

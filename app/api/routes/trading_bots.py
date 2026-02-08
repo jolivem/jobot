@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.api.deps import get_current_user
 from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead
-from app.schemas.trade import TradeRead
+from app.schemas.trade import TradeRead, TradeWithSymbol
 from app.services.trading_bot_service import TradingBotService
+from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 
 router = APIRouter(prefix="/trading-bots", tags=["trading-bots"])
@@ -88,6 +89,28 @@ def delete_bot(
     if not ok:
         raise HTTPException(status_code=404, detail="Trading bot not found")
     return {"deleted": True}
+
+
+@router.get("/trades/all", response_model=list[TradeWithSymbol])
+def list_all_trades(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """List recent trades across all user's bots."""
+    bots = TradingBotService(db).list(user.id)
+    if not bots:
+        return []
+    bot_map = {b.id: b.symbol for b in bots}
+    trades = TradeRepository(db).list_by_bots(list(bot_map.keys()))
+    return [
+        TradeWithSymbol(
+            id=t.id,
+            trading_bot_id=t.trading_bot_id,
+            trade_type=t.trade_type,
+            price=t.price,
+            quantity=t.quantity,
+            created_at=t.created_at,
+            symbol=bot_map[t.trading_bot_id],
+        )
+        for t in trades
+    ]
 
 
 @router.get("/{bot_id}/trades", response_model=list[TradeRead])

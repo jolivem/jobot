@@ -48,6 +48,12 @@ export default function Navbar() {
                   Bots
                 </Link>
                 <Link
+                  href="/trades"
+                  className="px-4 py-2 text-sm font-medium hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  Trades
+                </Link>
+                <Link
                   href="/settings"
                   className="px-4 py-2 text-sm font-medium hover:text-gray-600 dark:hover:text-gray-300"
                 >

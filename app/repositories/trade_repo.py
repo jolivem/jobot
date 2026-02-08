@@ -25,3 +25,15 @@ class TradeRepository:
             .order_by(Trade.created_at.desc())
             .all()
         )
+
+    def list_by_bots(self, bot_ids: list[int], limit: int = 200) -> list[Trade]:
+        """List recent trades across multiple bots."""
+        if not bot_ids:
+            return []
+        return (
+            self.db.query(Trade)
+            .filter(Trade.trading_bot_id.in_(bot_ids))
+            .order_by(Trade.created_at.desc())
+            .limit(limit)
+            .all()
+        )

@@ -141,6 +141,30 @@ export async function fetchUsdcSymbols(): Promise<string[]> {
   return data.symbols;
 }
 
+export interface Trade {
+  id: number;
+  trading_bot_id: number;
+  trade_type: string;
+  price: number;
+  quantity: number;
+  created_at: string;
+  symbol?: string;
+}
+
+export async function fetchAllTrades(accessToken: string): Promise<Trade[]> {
+  const response = await fetch(`${API_URL}/trading-bots/trades/all`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<Trade[]>(response);
+}
+
+export async function fetchBotTrades(accessToken: string, botId: number): Promise<Trade[]> {
+  const response = await fetch(`${API_URL}/trading-bots/${botId}/trades`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<Trade[]>(response);
+}
+
 export async function createBot(accessToken: string, data: TradingBotCreate): Promise<TradingBot> {
   const response = await fetch(`${API_URL}/trading-bots`, {
     method: 'POST',

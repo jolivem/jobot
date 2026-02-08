@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { listBots, createBot, fetchUsdcSymbols, TradingBot, TradingBotCreate } from "@/lib/api";
 
 const emptyForm: TradingBotCreate = {
@@ -319,6 +320,13 @@ export default function BotsPage() {
                   <p className="font-medium">{bot.sell_percentage}%</p>
                 </div>
               </div>
+
+              <Link
+                href={`/trades?bot_id=${bot.id}`}
+                className="block text-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+              >
+                View Trades
+              </Link>
             </div>
           ))}
         </div>
