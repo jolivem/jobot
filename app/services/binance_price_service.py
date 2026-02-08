@@ -38,3 +38,16 @@ class BinancePriceService:
                 result[item["symbol"]] = float(item["price"])
 
         return result
+
+    def get_usdc_symbols(self) -> list[str]:
+        """Fetch all actively trading USDC pairs from Binance exchangeInfo."""
+        r = self.client.get(f"{self.base_url}/api/v3/exchangeInfo")
+        r.raise_for_status()
+        data = r.json()
+        symbols = [
+            s["symbol"]
+            for s in data["symbols"]
+            if s["quoteAsset"] == "USDC" and s["status"] == "TRADING"
+        ]
+        symbols.sort()
+        return symbols

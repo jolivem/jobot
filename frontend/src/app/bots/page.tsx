@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { listBots, createBot, TradingBot, TradingBotCreate } from "@/lib/api";
+import { listBots, createBot, fetchUsdcSymbols, TradingBot, TradingBotCreate } from "@/lib/api";
 
 const emptyForm: TradingBotCreate = {
   symbol: "",
@@ -21,8 +21,20 @@ export default function BotsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<TradingBotCreate>({ ...emptyForm });
+  const [symbols, setSymbols] = useState<string[]>([]);
+  const [symbolsLoading, setSymbolsLoading] = useState(true);
+  const [symbolSearch, setSymbolSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+
+  useEffect(() => {
+    fetchUsdcSymbols()
+      .then(setSymbols)
+      .catch(() => setSymbols([]))
+      .finally(() => setSymbolsLoading(false));
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -35,16 +47,33 @@ export default function BotsPage() {
       .finally(() => setLoading(false));
   }, [token, router]);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
     setError("");
     setSaving(true);
 
+    if (!form.symbol) {
+      setError("Please select a trading pair");
+      setSaving(false);
+      return;
+    }
+
     try {
       const bot = await createBot(token, form);
       setBots((prev) => [...prev, bot]);
       setForm({ ...emptyForm });
+      setSymbolSearch("");
       setShowForm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create bot");
@@ -92,19 +121,57 @@ export default function BotsPage() {
             </div>
           )}
 
-          <div>
+          <div ref={dropdownRef}>
             <label htmlFor="symbol" className="block text-sm font-medium mb-1">
               Symbol
             </label>
-            <input
-              id="symbol"
-              type="text"
-              value={form.symbol}
-              onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })}
-              className={inputClass}
-              placeholder="BTCUSDT"
-              required
-            />
+            <div className="relative">
+              <input
+                id="symbol"
+                type="text"
+                value={symbolSearch}
+                onChange={(e) => {
+                  setSymbolSearch(e.target.value.toUpperCase());
+                  setForm({ ...form, symbol: "" });
+                  setDropdownOpen(true);
+                }}
+                onFocus={() => setDropdownOpen(true)}
+                className={inputClass}
+                placeholder={symbolsLoading ? "Loading pairs..." : "Search USDC pairs..."}
+                disabled={symbolsLoading}
+                autoComplete="off"
+              />
+              {form.symbol && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-green-600 dark:text-green-400">
+                  {form.symbol}
+                </span>
+              )}
+              {dropdownOpen && symbolSearch && (
+                <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg">
+                  {symbols
+                    .filter((s) => s.includes(symbolSearch))
+                    .slice(0, 50)
+                    .map((sym) => (
+                      <li
+                        key={sym}
+                        onClick={() => {
+                          setForm({ ...form, symbol: sym });
+                          setSymbolSearch(sym);
+                          setDropdownOpen(false);
+                        }}
+                        className="px-4 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-800 text-sm"
+                      >
+                        {sym}
+                      </li>
+                    ))}
+                  {symbols.filter((s) => s.includes(symbolSearch)).length === 0 && (
+                    <li className="px-4 py-3 text-sm text-gray-500">
+                      No matching USDC pairs found
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

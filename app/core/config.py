@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     BINANCE_SECRET_KEY: str | None = None
     BINANCE_LIVE_TRADING: bool = False  # Set to True for live trading
 
+    # Grid trading parameters
+    BUY_PULLBACK_PCT: float = 0.002   # 0.2% rebond after drop to confirm buy
+    SELL_PULLBACK_PCT: float = 0.002  # 0.2% pullback after peak to confirm sell
+    FEE_PCT: float = 0.00075          # 0.075% Binance trading fee
+
     # Optional override for tests
     DB_URL_OVERRIDE: str | None = None
 

@@ -70,3 +70,34 @@ class RedisCache:
             pipe.setex(key, ttl, json.dumps(data))
 
         pipe.execute()
+
+    def set_symbols(self, quote_asset: str, symbols: list[str], ttl: int = 3600) -> None:
+        """Cache a list of trading symbols for a given quote asset."""
+        key = f"symbols:{quote_asset.upper()}"
+        self.client.setex(key, ttl, json.dumps(symbols))
+
+    def get_symbols(self, quote_asset: str) -> Optional[list[str]]:
+        """Retrieve cached symbols for a quote asset."""
+        key = f"symbols:{quote_asset.upper()}"
+        data = self.client.get(key)
+        if not data:
+            return None
+        return json.loads(data)
+
+    def set_bot_state(self, bot_id: int, state: dict) -> None:
+        """Store trading bot runtime state (positions, lowest_price, etc.)."""
+        key = f"bot_state:{bot_id}"
+        self.client.set(key, json.dumps(state))
+
+    def get_bot_state(self, bot_id: int) -> Optional[dict]:
+        """Retrieve trading bot runtime state."""
+        key = f"bot_state:{bot_id}"
+        data = self.client.get(key)
+        if not data:
+            return None
+        return json.loads(data)
+
+    def delete_bot_state(self, bot_id: int) -> None:
+        """Remove trading bot runtime state."""
+        key = f"bot_state:{bot_id}"
+        self.client.delete(key)

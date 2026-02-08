@@ -135,6 +135,12 @@ export interface TradingBotCreate {
   buy_percentage: number;
 }
 
+export async function fetchUsdcSymbols(): Promise<string[]> {
+  const response = await fetch(`${API_URL}/symbols/usdc`);
+  const data = await handleResponse<{ symbols: string[] }>(response);
+  return data.symbols;
+}
+
 export async function createBot(accessToken: string, data: TradingBotCreate): Promise<TradingBot> {
   const response = await fetch(`${API_URL}/trading-bots`, {
     method: 'POST',

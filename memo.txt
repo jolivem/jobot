@@ -1,10 +1,15 @@
 docker install:
+docker pull phpmyadmin
+
 docker run --name mariadbtest -e MYSQL_ROOT_PASSWORD=mypass -p 3306:3306 -d docker.io/library/mariadb:10.6
 sudo docker run -d --name redis -p 6379:6379 redis:7-alpine
+docker run -d \
+  --name phpmyadmin \
+  -p 8080:80 \
+  -e PMA_HOST=172.22.84.222 \
+  -e PMA_PORT=3306 \
+  phpmyadmin
 
-docker:
-docker start mariadbtest
-docker start redis
 
 mysql:
 mysql -h 172.22.84.222 -u root -p
@@ -14,15 +19,34 @@ env start:
 cd ~/github/jobot
 source .venv/bin/activate
 
+docker:
+docker start mariadbtest
+docker start redis
+docker start phpmyadmin
+docker start redisinsight
+
+
 backend:
+--------
+# Worker
+celery -A app.workers.celery_app worker --loglevel=info &
+# Beat (scheduler)
+celery -A app.workers.celery_app beat --loglevel=info &
+alembic upgrade head
 uvicorn app.main:app --reload
-http://localhost:8000/health
-http://localhost:8000/docs
 
 frontend:
+---------
 cd frontend
 nvm use
 npm run dev
+
+web util:
+---------
+phpmyadmin: http://localhost:8080
+backend: http://localhost:8000/health
+backend: http://localhost:8000/docs
+frontend: http://localhost:3000/
 
 wsl jobot:
 alembic upgrade head
