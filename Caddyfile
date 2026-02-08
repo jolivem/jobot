@@ -1,0 +1,12 @@
+:80 {
+	# API requests: /api/* -> backend (strip /api prefix)
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:8000
+	}
+
+	# Everything else -> Next.js frontend
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

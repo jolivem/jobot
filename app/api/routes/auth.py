@@ -4,8 +4,10 @@ import time
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.db import get_db
 from app.core.config import settings
@@ -18,10 +20,12 @@ from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=MeResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/hour")
+def register(request: Request, payload: RegisterRequest, db: Session = Depends(get_db)):
     try:
         user = AuthService(db).register(payload.email, payload.password, role="user")
         return MeResponse.from_user(user)
@@ -39,7 +43,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     try:
         return AuthService(db).login(payload.email, payload.password)
     except ValueError as e:
@@ -80,7 +85,8 @@ def update_me(payload: UserUpdate, db: Session = Depends(get_db), user=Depends(g
 
 
 @router.post("/me/verify-binance")
-def verify_binance_keys(user=Depends(get_current_user)):
+@limiter.limit("5/minute")
+def verify_binance_keys(request: Request, user=Depends(get_current_user)):
     if not user.binance_api_key or not user.binance_api_secret:
         raise HTTPException(status_code=400, detail="Binance API keys not configured")
 

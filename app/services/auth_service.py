@@ -29,10 +29,13 @@ class AuthService:
         else:
             user = self.users.create(email=email, password_hash=hash_password(password), role=role)
 
-        # Generate verification token and log the link
+        # Generate verification token
         token = create_verification_token(user.id)
-        verify_url = f"http://localhost:3000/verify/{token}"
-        logger.info(f"[EMAIL] Verification link for {email}: {verify_url}")
+        # TODO: send real email in production
+        if settings.APP_ENV in ("dev", "test"):
+            logger.info(f"[EMAIL] Verification token for {email}: {token}")
+        else:
+            logger.info(f"[EMAIL] Verification email sent to {email}")
 
         return user
 

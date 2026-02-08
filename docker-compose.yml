@@ -1,13 +1,12 @@
 services:
   mariadb:
     image: mariadb:10.6
+    restart: unless-stopped
     environment:
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_ROOT_PASSWORD: root
-    ports:
-      - "3306:3306"
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
@@ -18,8 +17,9 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -28,14 +28,13 @@ services:
 
   api:
     build: .
+    restart: unless-stopped
     env_file: .env
     depends_on:
       mariadb:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8000:8000"
     command: >
       sh -c "
       alembic upgrade head &&
@@ -44,28 +43,47 @@ services:
 
   worker:
     build: .
+    restart: unless-stopped
     env_file: .env
     depends_on:
-      - redis
-      - mariadb
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: celery -A app.workers.celery_app.celery worker -l INFO
 
   beat:
     build: .
+    restart: unless-stopped
     env_file: .env
     depends_on:
-      - redis
-      - mariadb
+      redis:
+        condition: service_healthy
     command: celery -A app.workers.celery_app.celery beat -l INFO
 
   frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://api:8000
+    build:
+      context: ./frontend
+      args:
+        # /api = same origin, Caddy proxies to backend
+        NEXT_PUBLIC_API_URL: /api
+    restart: unless-stopped
     depends_on:
       - api
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - api
+      - frontend
+
 volumes:
   mariadb_data:
+  redis_data:
+  caddy_data:
