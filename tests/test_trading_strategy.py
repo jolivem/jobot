@@ -209,8 +209,8 @@ class TestMultiplePositions:
         # After all sold, state should have no positions
         assert len(state["positions"]) == 0
 
-    def test_lowest_price_reset_after_buy(self):
-        """lowest_price should reset to None after each buy."""
+    def test_lowest_price_reset_after_first_buy(self):
+        """lowest_price should be None after the first buy (no positions before)."""
         bot = make_bot(buy_percentage=2.0)
         state = {"positions": [], "lowest_price": None}
 
@@ -224,6 +224,35 @@ class TestMultiplePositions:
 
         _, state = decide_trade(bot, 97.0, state, 98.0)
         assert state["lowest_price"] == 97.0
+
+    def test_no_duplicate_buy_at_same_price(self):
+        """After a grid buy, the same price should NOT trigger another buy."""
+        bot = make_bot(buy_percentage=2.0)
+        state = {"positions": [], "lowest_price": None}
+
+        # First buy at 100
+        decisions, state = decide_trade(bot, 100.0, state, None)
+        assert len(decisions) == 1
+
+        # Price drops: 98 -> 97.5 (new low) -> 97.9 (bounce) -> 97.7 (confirm)
+        _, state = decide_trade(bot, 98.0, state, 100.0)
+        _, state = decide_trade(bot, 97.5, state, 98.0)
+        _, state = decide_trade(bot, 97.9, state, 97.5)  # bounce above pullback
+        # 97.7 < 97.9 (prev), 97.7 >= 97.5*1.002=97.695, drop=2.3% -> BUY
+        decisions, state = decide_trade(bot, 97.7, state, 97.9)
+        assert len(decisions) == 1
+        assert decisions[0]["side"] == "buy"
+        assert len(state["positions"]) == 2
+
+        # Next tick at same price -> should NOT buy again
+        decisions, state = decide_trade(bot, 97.7, state, 97.7)
+        assert len(decisions) == 0
+        assert len(state["positions"]) == 2
+
+        # Price stays flat -> still no buy
+        decisions, state = decide_trade(bot, 97.7, state, 97.7)
+        assert len(decisions) == 0
+        assert len(state["positions"]) == 2
 
 
 class TestFullScenario:

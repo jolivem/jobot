@@ -21,10 +21,7 @@ def cache_prices():
         symbols = bot_repo.list_active_symbols()
 
         if not symbols:
-            logger.debug("No active trading bots, skipping price cache update")
             return
-
-        logger.info(f"Caching prices for {len(symbols)} symbols: {symbols}")
 
         # Fetch prices from Binance
         binance = BinancePriceService()
@@ -33,8 +30,6 @@ def cache_prices():
         # Store in Redis
         cache = RedisCache()
         cache.set_prices_batch(prices)
-
-        logger.info(f"Successfully cached {len(prices)} prices")
 
     except Exception as e:
         logger.error(f"Error caching prices: {e}", exc_info=True)

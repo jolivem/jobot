@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchAllTrades, fetchBotTrades, listBots, Trade, TradingBot } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TradesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    }>
+      <TradesContent />
+    </Suspense>
+  );
+}
+
+function TradesContent() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const botId = searchParams.get("bot_id");
 
@@ -14,28 +28,29 @@ export default function TradesPage() {
   const [bots, setBots] = useState<TradingBot[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (authLoading || !isAuthenticated) return;
 
     const load = async () => {
       try {
-        const botsList = await listBots(token);
+        const botsList = await listBots();
         setBots(botsList);
 
         let tradesList: Trade[];
         if (botId) {
-          tradesList = await fetchBotTrades(token, parseInt(botId));
+          tradesList = await fetchBotTrades(parseInt(botId));
           const bot = botsList.find((b) => b.id === parseInt(botId));
           if (bot) {
             tradesList = tradesList.map((t) => ({ ...t, symbol: bot.symbol }));
           }
         } else {
-          tradesList = await fetchAllTrades(token);
+          tradesList = await fetchAllTrades();
         }
         setTrades(tradesList);
       } catch {
@@ -45,7 +60,7 @@ export default function TradesPage() {
       }
     };
     load();
-  }, [token, router, botId]);
+  }, [authLoading, isAuthenticated, router, botId]);
 
   if (loading) {
     return (
@@ -159,7 +174,8 @@ function computeDropFromPreviousBuy(trades: Trade[], botMap: Record<number, stri
           dropMap.set(t.id, "1st buy");
         } else {
           const drop = ((lastBuyPrice - t.price) / lastBuyPrice) * 100;
-          dropMap.set(t.id, `-${drop.toFixed(2)}%`);
+          const sign = drop >= 0 ? "-" : "+";
+          dropMap.set(t.id, `${sign}${Math.abs(drop).toFixed(2)}%`);
         }
         lastBuyPrice = t.price;
       } else {

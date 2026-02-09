@@ -9,10 +9,13 @@ import {
   updateBot,
   deleteBot,
   fetchUsdcSymbols,
+  fetchBotStats,
   TradingBot,
   TradingBotCreate,
   TradingBotUpdate,
+  BotStats,
 } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const emptyForm: TradingBotCreate = {
   symbol: "",
@@ -25,6 +28,7 @@ const emptyForm: TradingBotCreate = {
 
 export default function BotsPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [bots, setBots] = useState<TradingBot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +41,9 @@ export default function BotsPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Stats state
+  const [statsMap, setStatsMap] = useState<Record<number, BotStats>>({});
+
   // Edit state
   const [editingBotId, setEditingBotId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<TradingBotUpdate>({});
@@ -48,8 +55,11 @@ export default function BotsPage() {
   const [deletingBotId, setDeletingBotId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     fetchUsdcSymbols()
@@ -59,15 +69,17 @@ export default function BotsPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    listBots(token)
-      .then(setBots)
+    if (authLoading || !isAuthenticated) return;
+    Promise.all([listBots(), fetchBotStats()])
+      .then(([botsData, statsData]) => {
+        setBots(botsData);
+        const map: Record<number, BotStats> = {};
+        for (const s of statsData) map[s.bot_id] = s;
+        setStatsMap(map);
+      })
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
-  }, [token, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -84,7 +96,6 @@ export default function BotsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setError("");
     setSaving(true);
 
@@ -95,7 +106,7 @@ export default function BotsPage() {
     }
 
     try {
-      const bot = await createBot(token, form);
+      const bot = await createBot(form);
       setBots((prev) => [bot, ...prev]);
       setForm({ ...emptyForm });
       setSymbolSearch("");
@@ -108,11 +119,10 @@ export default function BotsPage() {
   };
 
   const handleToggle = async (bot: TradingBot) => {
-    if (!token) return;
     setTogglingBotId(bot.id);
     try {
       const newActive = bot.is_active ? 0 : 1;
-      const updated = await updateBot(token, bot.id, { is_active: newActive });
+      const updated = await updateBot(bot.id, { is_active: newActive });
       setBots((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to toggle bot");
@@ -122,10 +132,9 @@ export default function BotsPage() {
   };
 
   const handleDelete = async (botId: number) => {
-    if (!token) return;
     setDeletingBotId(botId);
     try {
-      await deleteBot(token, botId);
+      await deleteBot(botId);
       setBots((prev) => prev.filter((b) => b.id !== botId));
       setConfirmDeleteId(null);
     } catch (err) {
@@ -154,11 +163,10 @@ export default function BotsPage() {
   };
 
   const handleEditSave = async (botId: number) => {
-    if (!token) return;
     setEditError("");
     setEditSaving(true);
     try {
-      const updated = await updateBot(token, botId, editForm);
+      const updated = await updateBot(botId, editForm);
       setBots((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
       setEditingBotId(null);
       setEditForm({});
@@ -544,6 +552,57 @@ export default function BotsPage() {
               ) : (
                 /* ─── View Mode ─── */
                 <>
+                  {/* ─── Stats ─── */}
+                  {statsMap[bot.id] && (() => {
+                    const s = statsMap[bot.id];
+                    const unrealized = s.open_positions_value !== null
+                      ? s.open_positions_value - s.open_positions_cost
+                      : null;
+                    const totalPnl = unrealized !== null
+                      ? s.realized_profit + unrealized
+                      : null;
+                    return (
+                      <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Realized P&L</span>
+                          <span className={`font-medium ${s.realized_profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                            {s.realized_profit >= 0 ? "+" : ""}{s.realized_profit.toFixed(4)} $
+                          </span>
+                        </div>
+                        {s.open_positions_count > 0 && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500 dark:text-gray-400">Open ({s.open_positions_count} pos)</span>
+                              <span className="font-medium">{s.open_positions_cost.toFixed(4)} $</span>
+                            </div>
+                            {s.open_positions_value !== null && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500 dark:text-gray-400">Current Value</span>
+                                <span className="font-medium">{s.open_positions_value.toFixed(4)} $</span>
+                              </div>
+                            )}
+                            {unrealized !== null && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500 dark:text-gray-400">Unrealized P&L</span>
+                                <span className={`font-medium ${unrealized >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                  {unrealized >= 0 ? "+" : ""}{unrealized.toFixed(4)} $
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {totalPnl !== null && (
+                          <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
+                            <span className="text-gray-500 dark:text-gray-400 font-medium">Total P&L</span>
+                            <span className={`font-bold ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                              {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(4)} $
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">

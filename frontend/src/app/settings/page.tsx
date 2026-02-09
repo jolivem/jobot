@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMe, updateMe, verifyBinanceKeys, UserResponse, UserUpdateRequest } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading, refreshUser } = useAuth();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,13 +25,13 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
+    if (!authLoading && !isAuthenticated) {
       router.push("/login");
       return;
     }
+    if (authLoading || !isAuthenticated) return;
 
-    getMe(token)
+    getMe()
       .then((u) => {
         setUser(u);
         setForm({
@@ -43,16 +45,13 @@ export default function SettingsPage() {
       })
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [authLoading, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setMessage("");
     setSaving(true);
-
-    const token = localStorage.getItem("access_token");
-    if (!token) return;
 
     const data: UserUpdateRequest = {};
     if (form.email !== user?.email) data.email = form.email;
@@ -69,8 +68,9 @@ export default function SettingsPage() {
     }
 
     try {
-      const updated = await updateMe(token, data);
+      const updated = await updateMe(data);
       setUser(updated);
+      await refreshUser();
       setForm((prev) => ({
         ...prev,
         binance_api_key: "",
@@ -85,14 +85,12 @@ export default function SettingsPage() {
   };
 
   const handleVerifyBinance = async () => {
-    const token = localStorage.getItem("access_token");
-    if (!token) return;
     setError("");
     setMessage("");
     setVerifying(true);
 
     try {
-      await verifyBinanceKeys(token);
+      await verifyBinanceKeys();
       setMessage("Binance API keys are valid!");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to verify Binance keys");

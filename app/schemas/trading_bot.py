@@ -20,6 +20,16 @@ class TradingBotUpdate(BaseModel):
     is_active: int | None = Field(None, ge=0, le=1)
 
 
+class BotStats(BaseModel):
+    bot_id: int
+    symbol: str
+    realized_profit: float
+    open_positions_count: int
+    open_positions_cost: float
+    current_price: float | None
+    open_positions_value: float | None
+
+
 class TradingBotRead(BaseModel):
     id: int
     user_id: int

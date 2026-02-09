@@ -126,7 +126,9 @@ def decide_trade(
                     "highest": current_price,
                     "fee": qty * current_price * fee_pct,
                 })
-                lowest_price = None
+                # Reset lowest_price to current price so the next buy requires
+                # a fresh drop of buy_percentage from this new entry
+                lowest_price = current_price
                 logger.info(
                     f"Bot {bot.id}: BUY @ {current_price:.8f} "
                     f"(qty: {qty:.6f}, positions: {len(positions)})"

@@ -3,11 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.api.deps import get_current_user
-from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead
+from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead, BotStats
 from app.schemas.trade import TradeRead, TradeWithSymbol
 from app.services.trading_bot_service import TradingBotService
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
+from app.core.cache import RedisCache
 
 router = APIRouter(prefix="/trading-bots", tags=["trading-bots"])
 
@@ -35,6 +36,61 @@ def create_bot(
 @router.get("", response_model=list[TradingBotRead])
 def list_bots(db: Session = Depends(get_db), user=Depends(get_current_user)):
     return TradingBotService(db).list(user.id)
+
+
+@router.get("/stats", response_model=list[BotStats])
+def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Compute realized profit and open positions value for all user bots."""
+    bots = TradingBotService(db).list(user.id)
+    if not bots:
+        return []
+
+    trade_repo = TradeRepository(db)
+    try:
+        cache = RedisCache()
+    except Exception:
+        cache = None
+
+    results = []
+    for bot in bots:
+        trades = trade_repo.list_by_bot(bot.id)
+        # Sort chronologically (oldest first) for FIFO matching
+        trades.sort(key=lambda t: t.created_at)
+
+        buys = []
+        realized_profit = 0.0
+        for t in trades:
+            if t.trade_type == "buy":
+                buys.append(t)
+            elif t.trade_type == "sell" and buys:
+                buy = buys.pop(0)
+                realized_profit += (t.price - buy.price) * t.quantity
+
+        # Open positions = remaining unmatched buys
+        open_cost = sum(b.price * b.quantity for b in buys)
+
+        # Current price from Redis
+        current_price = None
+        open_value = None
+        if cache:
+            try:
+                current_price = cache.get_price(bot.symbol)
+            except Exception:
+                pass
+        if current_price is not None:
+            open_value = sum(b.quantity * current_price for b in buys)
+
+        results.append(BotStats(
+            bot_id=bot.id,
+            symbol=bot.symbol,
+            realized_profit=round(realized_profit, 6),
+            open_positions_count=len(buys),
+            open_positions_cost=round(open_cost, 6),
+            current_price=current_price,
+            open_positions_value=round(open_value, 6) if open_value is not None else None,
+        ))
+
+    return results
 
 
 @router.get("/{bot_id}", response_model=TradingBotRead)

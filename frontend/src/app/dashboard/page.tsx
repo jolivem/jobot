@@ -1,30 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMe, UserResponse } from "@/lib/api";
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<UserResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    getMe(token)
-      .then(setUser)
-      .catch(() => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        router.push("/login");
-      })
-      .finally(() => setLoading(false));
-  }, [router]);
+    if (!loading && !isAuthenticated) router.push("/login");
+  }, [loading, isAuthenticated, router]);
 
   if (loading) {
     return (
