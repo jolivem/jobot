@@ -22,7 +22,7 @@ const emptyForm: TradingBotCreate = {
   min_price: 0,
   max_price: 0,
   total_amount: 0,
-  buy_percentage: 0,
+  grid_levels: 10,
   sell_percentage: 0,
 };
 
@@ -150,7 +150,7 @@ export default function BotsPage() {
       max_price: bot.max_price,
       min_price: bot.min_price,
       total_amount: bot.total_amount,
-      buy_percentage: bot.buy_percentage,
+      grid_levels: bot.grid_levels,
       sell_percentage: bot.sell_percentage,
     });
     setEditError("");
@@ -342,22 +342,22 @@ export default function BotsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label
-                htmlFor="buy_percentage"
+                htmlFor="grid_levels"
                 className="block text-sm font-medium mb-1"
               >
-                Buy Percentage (%)
+                Grid Levels
               </label>
               <input
-                id="buy_percentage"
+                id="grid_levels"
                 type="number"
-                step="any"
-                min="0"
+                step="1"
+                min="1"
                 max="100"
-                value={form.buy_percentage || ""}
+                value={form.grid_levels || ""}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    buy_percentage: parseFloat(e.target.value) || 0,
+                    grid_levels: parseInt(e.target.value) || 10,
                   })
                 }
                 className={inputClass}
@@ -496,18 +496,18 @@ export default function BotsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        Buy %
+                        Grid Levels
                       </label>
                       <input
                         type="number"
-                        step="any"
-                        min="0"
+                        step="1"
+                        min="1"
                         max="100"
-                        value={editForm.buy_percentage ?? ""}
+                        value={editForm.grid_levels ?? ""}
                         onChange={(e) =>
                           setEditForm({
                             ...editForm,
-                            buy_percentage: parseFloat(e.target.value) || 0,
+                            grid_levels: parseInt(e.target.value) || 10,
                           })
                         }
                         className={editInputClass}
@@ -630,9 +630,9 @@ export default function BotsPage() {
                     </div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">
-                        Buy %
+                        Grid Levels
                       </span>
-                      <p className="font-medium">{bot.buy_percentage}%</p>
+                      <p className="font-medium">{bot.grid_levels}</p>
                     </div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">

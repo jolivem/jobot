@@ -27,7 +27,7 @@ def create_bot(
             min_price=payload.min_price,
             total_amount=payload.total_amount,
             sell_percentage=payload.sell_percentage,
-            buy_percentage=payload.buy_percentage,
+            grid_levels=payload.grid_levels,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -117,7 +117,7 @@ def update_bot(
             min_price=payload.min_price,
             total_amount=payload.total_amount,
             sell_percentage=payload.sell_percentage,
-            buy_percentage=payload.buy_percentage,
+            grid_levels=payload.grid_levels,
             is_active=payload.is_active,
         )
         if not bot:

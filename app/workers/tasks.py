@@ -5,7 +5,7 @@ from app.core.db import SessionLocal
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 from app.services.binance_price_service import BinancePriceService
-from app.services.trading_strategy import decide_trade
+from app.services.trading_strategy import decide_trade, reconstruct_state_from_trades
 from app.core.cache import RedisCache
 import logging
 
@@ -70,8 +70,32 @@ def run_trading_bot(self, bot_id: int):
     db_check_interval = 30
     previous_price = None
 
-    # Load or initialize bot state from Redis
-    state = cache.get_bot_state(bot_id) or {"positions": [], "lowest_price": None}
+    default_state = {
+        "positions": [], "lowest_price": None,
+        "grid_prices": [], "next_grid_index": 0,
+    }
+
+    # Load bot state from Redis, or reconstruct from DB trades
+    state = cache.get_bot_state(bot_id)
+    if state is None:
+        db_init: Session = SessionLocal()
+        try:
+            bot_repo_init = TradingBotRepository(db_init)
+            bot_init = bot_repo_init.get_active_by_id(bot_id)
+            if bot_init:
+                trades = TradeRepository(db_init).list_by_bot(bot_id)
+                if trades:
+                    state = reconstruct_state_from_trades(bot_init, trades)
+                    cache.set_bot_state(bot_id, state)
+                else:
+                    state = dict(default_state)
+            else:
+                state = dict(default_state)
+        except Exception as e:
+            logger.error(f"Bot {bot_id}: error reconstructing state: {e}", exc_info=True)
+            state = dict(default_state)
+        finally:
+            db_init.close()
 
     while True:
         db: Session = SessionLocal()
@@ -115,8 +139,8 @@ def run_trading_bot(self, bot_id: int):
                         quantity=decision["quantity"],
                     )
 
-                # Persist updated state to Redis
-                cache.set_bot_state(bot_id, state)
+            # Persist updated state to Redis every tick
+            cache.set_bot_state(bot_id, state)
 
             previous_price = price
 

@@ -7,7 +7,7 @@ class TradingBotCreate(BaseModel):
     min_price: float = Field(..., gt=0, description="Minimum price threshold")
     total_amount: float = Field(..., gt=0, description="Total amount to trade")
     sell_percentage: float = Field(..., gt=0, le=100, description="Percentage increase before selling")
-    buy_percentage: float = Field(..., gt=0, le=100, description="Percentage decrease before buying")
+    grid_levels: int = Field(10, ge=1, le=100, description="Number of grid buy levels")
 
 
 class TradingBotUpdate(BaseModel):
@@ -16,7 +16,7 @@ class TradingBotUpdate(BaseModel):
     min_price: float | None = Field(None, gt=0)
     total_amount: float | None = Field(None, gt=0)
     sell_percentage: float | None = Field(None, gt=0, le=100)
-    buy_percentage: float | None = Field(None, gt=0, le=100)
+    grid_levels: int | None = Field(None, ge=1, le=100)
     is_active: int | None = Field(None, ge=0, le=1)
 
 
@@ -39,7 +39,7 @@ class TradingBotRead(BaseModel):
     min_price: float
     total_amount: float
     sell_percentage: float
-    buy_percentage: float
+    grid_levels: int
 
     class Config:
         from_attributes = True

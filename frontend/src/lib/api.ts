@@ -52,7 +52,7 @@ export interface TradingBot {
   min_price: number;
   total_amount: number;
   sell_percentage: number;
-  buy_percentage: number;
+  grid_levels: number;
 }
 
 export interface TradingBotCreate {
@@ -61,7 +61,7 @@ export interface TradingBotCreate {
   min_price: number;
   total_amount: number;
   sell_percentage: number;
-  buy_percentage: number;
+  grid_levels: number;
 }
 
 export interface TradingBotUpdate {
@@ -69,7 +69,7 @@ export interface TradingBotUpdate {
   min_price?: number;
   total_amount?: number;
   sell_percentage?: number;
-  buy_percentage?: number;
+  grid_levels?: number;
   is_active?: number;
 }
 

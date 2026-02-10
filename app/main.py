@@ -1,8 +1,12 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from alembic.config import Config
+from alembic import command
 from app.core.config import settings
 from app.core.logging import setup_logging
 
@@ -14,8 +18,24 @@ from app.api.routes.admin import router as admin_router
 from app.api.routes.trading_bots import router as trading_bots_router
 from app.api.routes.symbols import router as symbols_router
 
+logger = logging.getLogger(__name__)
+
+
+def run_migrations() -> None:
+    """Run Alembic migrations to head on startup."""
+    try:
+        alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.db_url)
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations applied successfully")
+    except Exception as e:
+        logger.error(f"Failed to run migrations: {e}", exc_info=True)
+        raise
+
+
 def create_app() -> FastAPI:
     setup_logging()
+    run_migrations()
     app = FastAPI(title=settings.APP_NAME)
 
     app.add_middleware(

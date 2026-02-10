@@ -49,9 +49,8 @@ frontend: http://localhost:3000/
 wsl jobot:
 alembic upgrade head
 python -m app.workers.websocket_worker &
-# Worker
+# Worker and beat
 celery -A app.workers.celery_app worker --loglevel=info &
-# Beat (scheduler)
 celery -A app.workers.celery_app beat --loglevel=info &
 
 

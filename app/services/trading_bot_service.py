@@ -25,7 +25,7 @@ class TradingBotService:
         min_price: float,
         total_amount: float,
         sell_percentage: float,
-        buy_percentage: float,
+        grid_levels: int = 10,
     ):
         self._validate_prices(min_price, max_price)
         bot = self.repo.create(
@@ -35,7 +35,7 @@ class TradingBotService:
             min_price=min_price,
             total_amount=total_amount,
             sell_percentage=sell_percentage,
-            buy_percentage=buy_percentage,
+            grid_levels=grid_levels,
         )
         self._launch_bot_task(bot.id)
         return bot
@@ -55,7 +55,7 @@ class TradingBotService:
         min_price: float | None = None,
         total_amount: float | None = None,
         sell_percentage: float | None = None,
-        buy_percentage: float | None = None,
+        grid_levels: int | None = None,
         is_active: int | None = None,
     ):
         bot = self.repo.get_by_id(user_id, bot_id)
@@ -75,7 +75,7 @@ class TradingBotService:
             min_price=min_price,
             total_amount=total_amount,
             sell_percentage=sell_percentage,
-            buy_percentage=buy_percentage,
+            grid_levels=grid_levels,
             is_active=is_active,
         )
 

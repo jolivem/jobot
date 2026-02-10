@@ -15,7 +15,7 @@ class TradingBotRepository:
         min_price: float,
         total_amount: float,
         sell_percentage: float,
-        buy_percentage: float,
+        grid_levels: int = 10,
     ) -> TradingBot:
         row = TradingBot(
             user_id=user_id,
@@ -24,7 +24,7 @@ class TradingBotRepository:
             min_price=min_price,
             total_amount=total_amount,
             sell_percentage=sell_percentage,
-            buy_percentage=buy_percentage,
+            grid_levels=grid_levels,
         )
         self.db.add(row)
         self.db.commit()
