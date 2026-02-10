@@ -1,7 +1,9 @@
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.config import settings
 from app.api.deps import get_current_user
 from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead, BotStats
 from app.schemas.trade import TradeRead, TradeWithSymbol
@@ -177,3 +179,34 @@ def list_trades(
     if not bot:
         raise HTTPException(status_code=404, detail="Trading bot not found")
     return TradeRepository(db).list_by_bot(bot_id)
+
+
+@router.get("/{bot_id}/klines")
+def get_klines(
+    bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
+    """Fetch 7 days of 1h candlestick data from Binance for a bot's symbol."""
+    bot = TradingBotService(db).get(user.id, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Trading bot not found")
+
+    url = f"{settings.BINANCE_BASE_URL}/api/v3/klines"
+    params = {"symbol": bot.symbol, "interval": "1h", "limit": 168}
+
+    try:
+        resp = httpx.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Failed to fetch klines from Binance")
+
+    return [
+        {
+            "time": int(k[0] / 1000),  # ms -> seconds for lightweight-charts
+            "open": float(k[1]),
+            "high": float(k[2]),
+            "low": float(k[3]),
+            "close": float(k[4]),
+            "volume": float(k[5]),
+        }
+        for k in resp.json()
+    ]

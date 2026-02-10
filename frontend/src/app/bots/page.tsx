@@ -691,12 +691,20 @@ export default function BotsPage() {
                     )}
                   </div>
 
-                  <Link
-                    href={`/trades?bot_id=${bot.id}`}
-                    className="block text-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
-                  >
-                    View Trades
-                  </Link>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/trades?bot_id=${bot.id}`}
+                      className="flex-1 text-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                    >
+                      Trades
+                    </Link>
+                    <Link
+                      href={`/bots/${bot.id}/chart`}
+                      className="flex-1 text-center px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition"
+                    >
+                      Chart
+                    </Link>
+                  </div>
                 </>
               )}
             </div>

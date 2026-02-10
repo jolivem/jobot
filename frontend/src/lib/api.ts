@@ -284,3 +284,17 @@ export async function fetchBotTrades(botId: number): Promise<Trade[]> {
   const response = await authFetch(`${API_URL}/trading-bots/${botId}/trades`);
   return handleResponse<Trade[]>(response);
 }
+
+export interface Kline {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export async function fetchBotKlines(botId: number): Promise<Kline[]> {
+  const response = await authFetch(`${API_URL}/trading-bots/${botId}/klines`);
+  return handleResponse<Kline[]>(response);
+}
