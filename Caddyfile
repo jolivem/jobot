@@ -1,4 +1,10 @@
 :80 {
+	redir https://{host}{uri} permanent
+}
+
+:443 {
+	tls internal
+
 	# API requests: /api/* -> backend (strip /api prefix)
 	handle /api/* {
 		uri strip_prefix /api
