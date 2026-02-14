@@ -62,4 +62,9 @@ celery -A app.workers.celery_app control shutdown
 raspberry
 ---------------
 michel
-192.168.1.151
+192.168.1.51
+
+update:
+cd ~/jobot
+git pull
+docker compose up -d --build

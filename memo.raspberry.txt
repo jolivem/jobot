@@ -1,0 +1,20 @@
+Commandes utiles
+
+# Voir les logs en temps réel
+docker compose logs -f
+
+# Logs d'un service spécifique
+docker compose logs -f worker
+docker compose logs -f api
+
+# Redémarrer un seul service
+docker compose restart worker
+
+# Voir l'état des services
+docker compose ps
+
+# Arrêter tout
+docker compose down
+
+# Arrêter et supprimer les volumes (reset complet)
+docker compose down -v
