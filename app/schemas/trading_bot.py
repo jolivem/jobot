@@ -24,6 +24,7 @@ class BotStats(BaseModel):
     bot_id: int
     symbol: str
     realized_profit: float
+    monthly_realized_profit: float
     open_positions_count: int
     open_positions_cost: float
     current_price: float | None

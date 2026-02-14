@@ -10,6 +10,7 @@ import {
   deleteBot,
   fetchUsdcSymbols,
   fetchBotStats,
+  emergencySell,
   TradingBot,
   TradingBotCreate,
   TradingBotUpdate,
@@ -26,6 +27,10 @@ const emptyForm: TradingBotCreate = {
   sell_percentage: 0,
 };
 
+/** Parse a decimal string that may use comma as separator (French locale). */
+const parseNum = (v: string) => parseFloat(v.replace(",", ".")) || 0;
+const parseInt10 = (v: string) => parseInt(v.replace(",", ".")) || 10;
+
 export default function BotsPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -35,6 +40,7 @@ export default function BotsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<TradingBotCreate>({ ...emptyForm });
+  const [formStr, setFormStr] = useState({ min_price: "", max_price: "", total_amount: "", grid_levels: "10", sell_percentage: "" });
   const [symbols, setSymbols] = useState<string[]>([]);
   const [symbolsLoading, setSymbolsLoading] = useState(true);
   const [symbolSearch, setSymbolSearch] = useState("");
@@ -46,14 +52,16 @@ export default function BotsPage() {
 
   // Edit state
   const [editingBotId, setEditingBotId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<TradingBotUpdate>({});
+  const [editFormStr, setEditFormStr] = useState<Record<string, string>>({});
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
-  // Toggle/delete loading state
+  // Toggle/delete/emergency-sell loading state
   const [togglingBotId, setTogglingBotId] = useState<number | null>(null);
   const [deletingBotId, setDeletingBotId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmEmergencySellId, setConfirmEmergencySellId] = useState<number | null>(null);
+  const [emergencySellingBotId, setEmergencySellingBotId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -106,9 +114,18 @@ export default function BotsPage() {
     }
 
     try {
-      const bot = await createBot(form);
+      const parsed: TradingBotCreate = {
+        symbol: form.symbol,
+        min_price: parseNum(formStr.min_price),
+        max_price: parseNum(formStr.max_price),
+        total_amount: parseNum(formStr.total_amount),
+        grid_levels: parseInt10(formStr.grid_levels),
+        sell_percentage: parseNum(formStr.sell_percentage),
+      };
+      const bot = await createBot(parsed);
       setBots((prev) => [bot, ...prev]);
       setForm({ ...emptyForm });
+      setFormStr({ min_price: "", max_price: "", total_amount: "", grid_levels: "10", sell_percentage: "" });
       setSymbolSearch("");
       setShowForm(false);
     } catch (err) {
@@ -144,21 +161,41 @@ export default function BotsPage() {
     }
   };
 
+  const handleEmergencySell = async (botId: number) => {
+    setEmergencySellingBotId(botId);
+    try {
+      const result = await emergencySell(botId);
+      alert(`Sold ${result.sold_count} position(s) at ${result.price}`);
+      setBots((prev) => prev.map((b) => (b.id === botId ? { ...b, is_active: 0 } : b)));
+      setConfirmEmergencySellId(null);
+      // Refresh stats
+      const statsData = await fetchBotStats();
+      const map: Record<number, BotStats> = {};
+      for (const s of statsData) map[s.bot_id] = s;
+      setStatsMap(map);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Emergency sell failed");
+    } finally {
+      setEmergencySellingBotId(null);
+    }
+  };
+
   const startEdit = (bot: TradingBot) => {
     setEditingBotId(bot.id);
-    setEditForm({
-      max_price: bot.max_price,
-      min_price: bot.min_price,
-      total_amount: bot.total_amount,
-      grid_levels: bot.grid_levels,
-      sell_percentage: bot.sell_percentage,
+    setEditFormStr({
+      min_price: String(bot.min_price),
+      max_price: String(bot.max_price),
+      total_amount: String(bot.total_amount),
+      grid_levels: String(bot.grid_levels),
+      sell_percentage: String(bot.sell_percentage),
     });
     setEditError("");
   };
 
   const cancelEdit = () => {
     setEditingBotId(null);
-    setEditForm({});
+
+    setEditFormStr({});
     setEditError("");
   };
 
@@ -166,10 +203,18 @@ export default function BotsPage() {
     setEditError("");
     setEditSaving(true);
     try {
-      const updated = await updateBot(botId, editForm);
+      const parsed: TradingBotUpdate = {
+        min_price: parseNum(editFormStr.min_price),
+        max_price: parseNum(editFormStr.max_price),
+        total_amount: parseNum(editFormStr.total_amount),
+        grid_levels: parseInt10(editFormStr.grid_levels),
+        sell_percentage: parseNum(editFormStr.sell_percentage),
+      };
+      const updated = await updateBot(botId, parsed);
       setBots((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
       setEditingBotId(null);
-      setEditForm({});
+  
+      setEditFormStr({});
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Failed to update bot");
     } finally {
@@ -285,11 +330,11 @@ export default function BotsPage() {
               </label>
               <input
                 id="min_price"
-                type="number"
-                step="any"
-                value={form.min_price || ""}
+                type="text"
+                inputMode="decimal"
+                value={formStr.min_price}
                 onChange={(e) =>
-                  setForm({ ...form, min_price: parseFloat(e.target.value) || 0 })
+                  setFormStr({ ...formStr, min_price: e.target.value })
                 }
                 className={inputClass}
                 required
@@ -304,11 +349,11 @@ export default function BotsPage() {
               </label>
               <input
                 id="max_price"
-                type="number"
-                step="any"
-                value={form.max_price || ""}
+                type="text"
+                inputMode="decimal"
+                value={formStr.max_price}
                 onChange={(e) =>
-                  setForm({ ...form, max_price: parseFloat(e.target.value) || 0 })
+                  setFormStr({ ...formStr, max_price: e.target.value })
                 }
                 className={inputClass}
                 required
@@ -325,14 +370,11 @@ export default function BotsPage() {
             </label>
             <input
               id="total_amount"
-              type="number"
-              step="any"
-              value={form.total_amount || ""}
+              type="text"
+              inputMode="decimal"
+              value={formStr.total_amount}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  total_amount: parseFloat(e.target.value) || 0,
-                })
+                setFormStr({ ...formStr, total_amount: e.target.value })
               }
               className={inputClass}
               required
@@ -349,16 +391,11 @@ export default function BotsPage() {
               </label>
               <input
                 id="grid_levels"
-                type="number"
-                step="1"
-                min="1"
-                max="100"
-                value={form.grid_levels || ""}
+                type="text"
+                inputMode="numeric"
+                value={formStr.grid_levels}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    grid_levels: parseInt(e.target.value) || 10,
-                  })
+                  setFormStr({ ...formStr, grid_levels: e.target.value })
                 }
                 className={inputClass}
                 required
@@ -373,16 +410,11 @@ export default function BotsPage() {
               </label>
               <input
                 id="sell_percentage"
-                type="number"
-                step="any"
-                min="0"
-                max="100"
-                value={form.sell_percentage || ""}
+                type="text"
+                inputMode="decimal"
+                value={formStr.sell_percentage}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    sell_percentage: parseFloat(e.target.value) || 0,
-                  })
+                  setFormStr({ ...formStr, sell_percentage: e.target.value })
                 }
                 className={inputClass}
                 required
@@ -446,14 +478,11 @@ export default function BotsPage() {
                         Min Price ($)
                       </label>
                       <input
-                        type="number"
-                        step="any"
-                        value={editForm.min_price ?? ""}
+                        type="text"
+                        inputMode="decimal"
+                        value={editFormStr.min_price ?? ""}
                         onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            min_price: parseFloat(e.target.value) || 0,
-                          })
+                          setEditFormStr({ ...editFormStr, min_price: e.target.value })
                         }
                         className={editInputClass}
                       />
@@ -463,14 +492,11 @@ export default function BotsPage() {
                         Max Price ($)
                       </label>
                       <input
-                        type="number"
-                        step="any"
-                        value={editForm.max_price ?? ""}
+                        type="text"
+                        inputMode="decimal"
+                        value={editFormStr.max_price ?? ""}
                         onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            max_price: parseFloat(e.target.value) || 0,
-                          })
+                          setEditFormStr({ ...editFormStr, max_price: e.target.value })
                         }
                         className={editInputClass}
                       />
@@ -481,14 +507,11 @@ export default function BotsPage() {
                       Amount ($)
                     </label>
                     <input
-                      type="number"
-                      step="any"
-                      value={editForm.total_amount ?? ""}
+                      type="text"
+                      inputMode="decimal"
+                      value={editFormStr.total_amount ?? ""}
                       onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          total_amount: parseFloat(e.target.value) || 0,
-                        })
+                        setEditFormStr({ ...editFormStr, total_amount: e.target.value })
                       }
                       className={editInputClass}
                     />
@@ -499,16 +522,11 @@ export default function BotsPage() {
                         Grid Levels
                       </label>
                       <input
-                        type="number"
-                        step="1"
-                        min="1"
-                        max="100"
-                        value={editForm.grid_levels ?? ""}
+                        type="text"
+                        inputMode="numeric"
+                        value={editFormStr.grid_levels ?? ""}
                         onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            grid_levels: parseInt(e.target.value) || 10,
-                          })
+                          setEditFormStr({ ...editFormStr, grid_levels: e.target.value })
                         }
                         className={editInputClass}
                       />
@@ -518,16 +536,11 @@ export default function BotsPage() {
                         Sell %
                       </label>
                       <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        max="100"
-                        value={editForm.sell_percentage ?? ""}
+                        type="text"
+                        inputMode="decimal"
+                        value={editFormStr.sell_percentage ?? ""}
                         onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            sell_percentage: parseFloat(e.target.value) || 0,
-                          })
+                          setEditFormStr({ ...editFormStr, sell_percentage: e.target.value })
                         }
                         className={editInputClass}
                       />
@@ -599,6 +612,17 @@ export default function BotsPage() {
                             </span>
                           </div>
                         )}
+                        {bot.total_amount > 0 && (() => {
+                          const monthlyPct = (s.monthly_realized_profit / bot.total_amount) * 100;
+                          return (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500 dark:text-gray-400">Monthly P&L %</span>
+                              <span className={`font-medium ${monthlyPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                {monthlyPct >= 0 ? "+" : ""}{monthlyPct.toFixed(2)}%
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })()}
@@ -705,6 +729,33 @@ export default function BotsPage() {
                       Chart
                     </Link>
                   </div>
+
+                  {statsMap[bot.id] && statsMap[bot.id].open_positions_count > 0 && (
+                    confirmEmergencySellId === bot.id ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEmergencySell(bot.id)}
+                          disabled={emergencySellingBotId === bot.id}
+                          className="flex-1 py-2 px-3 text-sm font-bold bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
+                        >
+                          {emergencySellingBotId === bot.id ? "Selling..." : "Confirm Sell All"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmEmergencySellId(null)}
+                          className="py-2 px-3 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmEmergencySellId(bot.id)}
+                        className="w-full py-2 px-3 text-sm font-medium text-orange-600 hover:text-orange-700 border border-orange-300 dark:border-orange-800 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition"
+                      >
+                        Emergency Sell All
+                      </button>
+                    )
+                  )}
                 </>
               )}
             </div>

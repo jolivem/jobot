@@ -77,6 +77,7 @@ export interface BotStats {
   bot_id: number;
   symbol: string;
   realized_profit: number;
+  monthly_realized_profit: number;
   open_positions_count: number;
   open_positions_cost: number;
   current_price: number | null;
@@ -97,8 +98,14 @@ export interface Trade {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.detail || 'An error occurred');
+    const error = await response.json();
+    let message = 'An error occurred';
+    if (typeof error.detail === 'string') {
+      message = error.detail;
+    } else if (Array.isArray(error.detail)) {
+      message = error.detail.map((e: { msg?: string }) => e.msg || String(e)).join(', ');
+    }
+    throw new Error(message);
   }
   return response.json();
 }
@@ -285,6 +292,13 @@ export async function fetchBotTrades(botId: number): Promise<Trade[]> {
   return handleResponse<Trade[]>(response);
 }
 
+export async function emergencySell(botId: number): Promise<{ sold_count: number; price: number }> {
+  const response = await authFetch(`${API_URL}/trading-bots/${botId}/emergency-sell`, {
+    method: 'POST',
+  });
+  return handleResponse<{ sold_count: number; price: number }>(response);
+}
+
 export interface Kline {
   time: number;
   open: number;
@@ -294,7 +308,7 @@ export interface Kline {
   volume: number;
 }
 
-export async function fetchBotKlines(botId: number): Promise<Kline[]> {
-  const response = await authFetch(`${API_URL}/trading-bots/${botId}/klines`);
+export async function fetchBotKlines(botId: number, interval = "1h", limit = 168): Promise<Kline[]> {
+  const response = await authFetch(`${API_URL}/trading-bots/${botId}/klines?interval=${interval}&limit=${limit}`);
   return handleResponse<Kline[]>(response);
 }

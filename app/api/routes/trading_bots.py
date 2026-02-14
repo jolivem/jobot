@@ -1,3 +1,6 @@
+import logging
+from datetime import datetime, timezone
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -8,9 +11,12 @@ from app.api.deps import get_current_user
 from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead, BotStats
 from app.schemas.trade import TradeRead, TradeWithSymbol
 from app.services.trading_bot_service import TradingBotService
+from app.services.binance_trade_service import BinanceTradeService
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 from app.core.cache import RedisCache
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/trading-bots", tags=["trading-bots"])
 
@@ -53,6 +59,9 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
     except Exception:
         cache = None
 
+    now = datetime.utcnow()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     results = []
     for bot in bots:
         trades = trade_repo.list_by_bot(bot.id)
@@ -61,12 +70,16 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
 
         buys = []
         realized_profit = 0.0
+        monthly_realized_profit = 0.0
         for t in trades:
             if t.trade_type == "buy":
                 buys.append(t)
             elif t.trade_type == "sell" and buys:
                 buy = buys.pop(0)
-                realized_profit += (t.price - buy.price) * t.quantity
+                profit = (t.price - buy.price) * t.quantity
+                realized_profit += profit
+                if t.created_at >= month_start:
+                    monthly_realized_profit += profit
 
         # Open positions = remaining unmatched buys
         open_cost = sum(b.price * b.quantity for b in buys)
@@ -86,6 +99,7 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
             bot_id=bot.id,
             symbol=bot.symbol,
             realized_profit=round(realized_profit, 6),
+            monthly_realized_profit=round(monthly_realized_profit, 6),
             open_positions_count=len(buys),
             open_positions_cost=round(open_cost, 6),
             current_price=current_price,
@@ -171,6 +185,73 @@ def list_all_trades(db: Session = Depends(get_db), user=Depends(get_current_user
     ]
 
 
+@router.post("/{bot_id}/emergency-sell")
+def emergency_sell(
+    bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
+    """Sell all open positions for a bot at market price."""
+    bot = TradingBotService(db).get(user.id, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Trading bot not found")
+
+    # Compute open positions via FIFO matching
+    trade_repo = TradeRepository(db)
+    trades = trade_repo.list_by_bot(bot_id)
+    trades.sort(key=lambda t: t.created_at)
+
+    buys: list = []
+    for t in trades:
+        if t.trade_type == "buy":
+            buys.append(t)
+        elif t.trade_type == "sell" and buys:
+            buys.pop(0)
+
+    if not buys:
+        raise HTTPException(status_code=400, detail="No open positions to sell")
+
+    # Get current market price
+    try:
+        cache = RedisCache()
+        current_price = cache.get_price(bot.symbol)
+    except Exception:
+        current_price = None
+
+    if current_price is None:
+        raise HTTPException(status_code=503, detail="Current price unavailable")
+
+    # Place real Binance orders if live trading is enabled
+    if settings.BINANCE_LIVE_TRADING and user.binance_api_key and user.binance_api_secret:
+        binance = BinanceTradeService(user.binance_api_key, user.binance_api_secret)
+        total_qty = sum(b.quantity for b in buys)
+        try:
+            binance.place_order(bot.symbol, "SELL", total_qty)
+        except Exception as e:
+            logger.error(f"Emergency sell Binance order failed for bot {bot_id}: {e}")
+            raise HTTPException(status_code=502, detail=f"Binance order failed: {e}")
+
+    # Record sell trades in DB
+    sold = []
+    for buy in buys:
+        trade = trade_repo.create(
+            trading_bot_id=bot_id,
+            trade_type="sell",
+            price=current_price,
+            quantity=buy.quantity,
+        )
+        sold.append(trade)
+
+    # Clear bot state in Redis and deactivate
+    try:
+        cache = RedisCache()
+        cache.delete_bot_state(bot_id)
+    except Exception:
+        pass
+
+    TradingBotService(db).deactivate(user.id, bot_id)
+
+    return {"sold_count": len(sold), "price": current_price}
+
+
 @router.get("/{bot_id}/trades", response_model=list[TradeRead])
 def list_trades(
     bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
@@ -183,15 +264,25 @@ def list_trades(
 
 @router.get("/{bot_id}/klines")
 def get_klines(
-    bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
+    bot_id: int,
+    interval: str = "1h",
+    limit: int = 168,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
 ):
-    """Fetch 7 days of 1h candlestick data from Binance for a bot's symbol."""
+    """Fetch candlestick data from Binance for a bot's symbol."""
+    allowed_intervals = {"1m","3m","5m","15m","30m","1h","2h","4h","6h","8h","12h","1d","3d","1w","1M"}
+    if interval not in allowed_intervals:
+        raise HTTPException(status_code=400, detail=f"Invalid interval: {interval}")
+    if limit < 1 or limit > 1000:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 1000")
+
     bot = TradingBotService(db).get(user.id, bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Trading bot not found")
 
     url = f"{settings.BINANCE_BASE_URL}/api/v3/klines"
-    params = {"symbol": bot.symbol, "interval": "1h", "limit": 168}
+    params = {"symbol": bot.symbol, "interval": interval, "limit": limit}
 
     try:
         resp = httpx.get(url, params=params, timeout=10)

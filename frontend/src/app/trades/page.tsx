@@ -111,7 +111,7 @@ function TradesContent() {
                 <th className="py-3 px-4 font-medium text-gray-500">Type</th>
                 <th className="py-3 px-4 font-medium text-gray-500 text-right">Price</th>
                 <th className="py-3 px-4 font-medium text-gray-500 text-right">Quantity</th>
-                <th className="py-3 px-4 font-medium text-gray-500 text-right">Drop %</th>
+                <th className="py-3 px-4 font-medium text-gray-500 text-right">Position</th>
               </tr>
             </thead>
             <tbody>
@@ -162,30 +162,44 @@ function computeDropFromPreviousBuy(trades: Trade[], botMap: Record<number, stri
     byBot[t.trading_bot_id].push(t);
   }
 
-  const dropMap = new Map<number, string>();
+  const labelMap = new Map<number, string>();
 
   for (const botId of Object.keys(byBot)) {
     const botTrades = byBot[parseInt(botId)].slice().reverse(); // chronological
+    let buyPosition = 0;
     let lastBuyPrice: number | null = null;
+    const openBuys: { position: number; price: number }[] = [];
 
     for (const t of botTrades) {
       if (t.trade_type === "buy") {
-        if (lastBuyPrice === null) {
-          dropMap.set(t.id, "1st buy");
-        } else {
+        buyPosition++;
+        let label = `#${buyPosition}`;
+        if (lastBuyPrice !== null) {
           const drop = ((lastBuyPrice - t.price) / lastBuyPrice) * 100;
-          const sign = drop >= 0 ? "-" : "+";
-          dropMap.set(t.id, `${sign}${Math.abs(drop).toFixed(2)}%`);
+          label += ` ${drop >= 0 ? "-" : "+"}${Math.abs(drop).toFixed(2)}%`;
         }
+        labelMap.set(t.id, label);
+        openBuys.push({ position: buyPosition, price: t.price });
         lastBuyPrice = t.price;
-      } else {
-        dropMap.set(t.id, "—");
+      } else if (t.trade_type === "sell") {
+        if (openBuys.length > 0) {
+          const matched = openBuys.pop()!;
+          const gain = ((t.price - matched.price) / matched.price) * 100;
+          labelMap.set(t.id, `#${matched.position} +${gain.toFixed(2)}%`);
+        } else {
+          labelMap.set(t.id, "—");
+        }
+        // All positions closed → reset for next cycle
+        if (openBuys.length === 0) {
+          buyPosition = 0;
+          lastBuyPrice = null;
+        }
       }
     }
   }
 
   return trades.map((t) => ({
     ...t,
-    dropLabel: dropMap.get(t.id) || "—",
+    dropLabel: labelMap.get(t.id) || "—",
   }));
 }
