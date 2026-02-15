@@ -3,6 +3,13 @@ raspberry
 michel
 192.168.1.51
 
+
+update:
+cd ~/jobot
+docker compose down
+update.sh
+
+
 Commandes utiles
 
 # Voir les logs en temps réel

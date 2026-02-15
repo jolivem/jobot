@@ -87,7 +87,7 @@ export default function BotsPage() {
         for (const s of statsData) map[s.bot_id] = s;
         setStatsMap(map);
       })
-      .catch(() => router.push("/login"))
+      .catch((err) => setError(err.message || "Failed to load bots"))
       .finally(() => setLoading(false));
   }, [authLoading, isAuthenticated, router]);
 
