@@ -17,6 +17,7 @@ import {
   BotStats,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import SimulationModal from "@/components/SimulationModal";
 
 const emptyForm: TradingBotCreate = {
   symbol: "",
@@ -62,6 +63,7 @@ export default function BotsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [confirmEmergencySellId, setConfirmEmergencySellId] = useState<number | null>(null);
   const [emergencySellingBotId, setEmergencySellingBotId] = useState<number | null>(null);
+  const [simulatingBotId, setSimulatingBotId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -728,6 +730,12 @@ export default function BotsPage() {
                     >
                       Chart
                     </Link>
+                    <button
+                      onClick={() => setSimulatingBotId(bot.id)}
+                      className="flex-1 text-center px-4 py-2 text-sm font-medium text-amber-600 hover:text-amber-700 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                    >
+                      Simulate
+                    </button>
                   </div>
 
                   {statsMap[bot.id] && statsMap[bot.id].open_positions_count > 0 && (
@@ -762,6 +770,20 @@ export default function BotsPage() {
           ))}
         </div>
       )}
+
+      {simulatingBotId !== null && (() => {
+        const simBot = bots.find((b) => b.id === simulatingBotId);
+        if (!simBot) return null;
+        return (
+          <SimulationModal
+            bot={simBot}
+            onClose={() => setSimulatingBotId(null)}
+            onApply={(updated) => {
+              setBots((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

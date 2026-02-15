@@ -312,3 +312,98 @@ export async function fetchBotKlines(botId: number, interval = "1h", limit = 168
   const response = await authFetch(`${API_URL}/trading-bots/${botId}/klines?interval=${interval}&limit=${limit}`);
   return handleResponse<Kline[]>(response);
 }
+
+// ── Simulation types ──────────────────────────────────────────
+
+export interface BacktestMetrics {
+  total_pnl: number;
+  total_pnl_pct: number;
+  num_trades: number;
+  num_buys: number;
+  num_sells: number;
+  win_rate: number;
+  max_drawdown: number;
+  sharpe_ratio: number;
+  final_open_positions: number;
+  unrealized_pnl: number;
+  min_price: number;
+  max_price: number;
+  grid_levels: number;
+  sell_percentage: number;
+  total_amount: number;
+}
+
+export interface SimulationResponse {
+  symbol: string;
+  best_params: BacktestMetrics;
+  test_result: BacktestMetrics;
+  top_results: BacktestMetrics[];
+  train_size: number;
+  test_size: number;
+  kline_interval: string;
+  computed_in_ms: number;
+}
+
+export interface ScreeningSymbolResult {
+  symbol: string;
+  best_pnl_pct: number;
+  best_min_price: number;
+  best_max_price: number;
+  best_grid_levels: number;
+  best_sell_percentage: number;
+  num_trades: number;
+  win_rate: number;
+  max_drawdown: number;
+  sharpe_ratio: number;
+  test_pnl_pct: number;
+  test_win_rate: number;
+}
+
+export interface ScreeningStatus {
+  task_id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  progress: number;
+  total_symbols: number;
+  processed_symbols: number;
+  results: ScreeningSymbolResult[];
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+// ── Simulation endpoints ──────────────────────────────────────
+
+export async function simulateBot(
+  botId: number,
+  options?: { interval?: string; limit?: number; total_amount?: number },
+): Promise<SimulationResponse> {
+  const response = await authFetch(`${API_URL}/simulation/bot/${botId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      interval: options?.interval ?? '1h',
+      limit: options?.limit ?? 2000,
+      total_amount: options?.total_amount ?? 1000,
+    }),
+  });
+  return handleResponse<SimulationResponse>(response);
+}
+
+export async function launchScreening(
+  options?: { interval?: string; limit?: number; total_amount?: number },
+): Promise<{ task_id: string; message: string }> {
+  const response = await authFetch(`${API_URL}/simulation/screening`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      interval: options?.interval ?? '1h',
+      limit: options?.limit ?? 2000,
+      total_amount: options?.total_amount ?? 1000,
+    }),
+  });
+  return handleResponse<{ task_id: string; message: string }>(response);
+}
+
+export async function getScreeningStatus(taskId: string): Promise<ScreeningStatus> {
+  const response = await authFetch(`${API_URL}/simulation/screening/${taskId}`);
+  return handleResponse<ScreeningStatus>(response);
+}

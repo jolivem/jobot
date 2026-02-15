@@ -35,6 +35,12 @@ export default function Navbar() {
                   Trades
                 </Link>
                 <Link
+                  href="/screening"
+                  className="px-4 py-2 text-sm font-medium hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  Screening
+                </Link>
+                <Link
                   href="/settings"
                   className="px-4 py-2 text-sm font-medium hover:text-gray-600 dark:hover:text-gray-300"
                 >

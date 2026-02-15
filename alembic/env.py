@@ -4,7 +4,7 @@ from alembic import context
 
 from app.core.config import settings
 from app.core.db import Base
-from app.models import user, refresh_token, portfolio, trade, trading_bot  # noqa: F401
+from app.models import user, refresh_token, portfolio, trade, trading_bot, screening_result  # noqa: F401
 
 config = context.config
 fileConfig(config.config_file_name)

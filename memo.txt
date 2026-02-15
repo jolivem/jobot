@@ -59,12 +59,55 @@ celery -A app.workers.celery_app control shutdown
 
 
 
-raspberry
----------------
-michel
-192.168.1.51
+
 
 update:
 cd ~/jobot
 git pull
 docker compose up -d --build
+
+screening
+------------
+# Screening complet (285 symboles, ~15-20 min)
+python scripts/run_screening.py
+
+# Avec export CSV
+python scripts/run_screening.py --csv screening_results.csv
+
+# Afficher le top 30
+python scripts/run_screening.py --top 30
+
+# Un seul symbole pour tester
+python scripts/run_screening.py --symbol SOLUSDC
+Les options disponibles :
+
+Option	Défaut	Description
+--interval	1m	Taille des bougies
+--limit	10080	Nombre de bougies (7 jours en 1m)
+--amount	1000	Budget simulé en USDC
+--top	50	Nombre de résultats affichés
+--delay	0.3	Délai entre les appels Binance (rate limit)
+--symbol	-	Tester un seul symbole
+--csv	-	Exporter en CSV
+
+Voici les colonnes du tableau de résultats :
+
+Colonne	Signification
+#	Rang (classé par Test%)
+Symbol	La paire de trading (ex: SOLUSDC)
+Train%	P&L% sur les 70% premiers jours (données d'entraînement). C'est le meilleur résultat trouvé par l'optimisation
+Test%	P&L% sur les 30% derniers jours (données de validation). C'est la colonne la plus importante : elle montre si la stratégie tient sur des données qu'elle n'a jamais vues
+Trades	Nombre total d'opérations (achats + ventes)
+Win%	Pourcentage de ventes gagnantes (vente > achat après frais)
+DD%	Max Drawdown : la plus grosse perte temporaire depuis un sommet. Ex: 5% = le portefeuille a perdu au maximum 5% par rapport à son plus haut
+Sharpe	Ratio de Sharpe : rendement moyen / volatilité. Plus c'est haut, mieux c'est. > 1 = bon, > 2 = très bon
+Min	Prix minimum de la grille (borne basse)
+Max	Prix maximum de la grille (borne haute)
+Lvl	Nombre de niveaux de la grille (5, 10, ou 15)
+Sell%	Pourcentage de gain minimum pour déclencher une vente
+Comment lire les résultats :
+
+Un bon candidat a un Test% positif (la stratégie fonctionne hors échantillon)
+Si Train% est élevé mais Test% est nul ou négatif, c'est du surapprentissage (overfitting) - à éviter
+Un Win% de 100% signifie que toutes les ventes ont été profitables, mais avec peu de trades ça peut être chanceux
+Un Drawdown faible et un Sharpe élevé indiquent une stratégie stable

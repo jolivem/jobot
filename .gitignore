@@ -63,3 +63,5 @@ celerybeat.pid
 # OS
 .DS_Store
 Thumbs.db
+
+screening_results.csv

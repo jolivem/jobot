@@ -6,7 +6,7 @@ celery = Celery(
     "jobot_workers",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.workers.tasks"],
+    include=["app.workers.tasks", "app.workers.screening_tasks"],
 )
 
 celery.conf.beat_schedule = {
