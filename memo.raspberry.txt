@@ -2,6 +2,7 @@ raspberry
 ---------------
 michel
 192.168.1.51
+ssh michel@192.168.1.51
 
 
 update:
@@ -30,3 +31,9 @@ docker compose down
 
 # Arrêter et supprimer les volumes (reset complet)
 docker compose down -v
+
+nslookup mjol.freeboxos.fr
+--------------------------
+Nom :    mjol.freeboxos.fr
+Addresses:  2a01:e0a:2d8:7550::1
+          82.66.210.7
