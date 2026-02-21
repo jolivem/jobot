@@ -1,4 +1,11 @@
 mjol.freeboxos.fr {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+
 	# API requests: /api/* -> backend (strip /api prefix)
 	handle /api/* {
 		uri strip_prefix /api
