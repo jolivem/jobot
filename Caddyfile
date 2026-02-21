@@ -1,6 +1,4 @@
-:443 {
-	tls internal
-
+mjol.freeboxos.fr {
 	# API requests: /api/* -> backend (strip /api prefix)
 	handle /api/* {
 		uri strip_prefix /api
@@ -11,9 +9,4 @@
 	handle {
 		reverse_proxy frontend:3000
 	}
-}
-
-# Redirect HTTP -> HTTPS
-:80 {
-	redir https://{host}{uri} permanent
 }
