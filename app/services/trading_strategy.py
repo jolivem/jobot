@@ -113,6 +113,7 @@ def decide_trade(
                     "side": "sell",
                     "quantity": pos["qty"],
                     "entry_price": current_price,
+                    "buy_entry": pos["entry"],
                 })
                 to_close.append(pos)
                 logger.info(

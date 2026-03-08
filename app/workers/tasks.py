@@ -173,11 +173,18 @@ def run_trading_bot(self, bot_id: int):
                             logger.error(f"Bot {bot_id}: Binance order failed: {e}", exc_info=True)
                             continue  # Skip recording if real order failed
 
+                    matched_buy_id = None
+                    if decision["side"] == "sell" and "buy_entry" in decision:
+                        matched_buy = trade_repo.find_unmatched_buy(bot_id, decision["buy_entry"])
+                        if matched_buy:
+                            matched_buy_id = matched_buy.id
+
                     trade_repo.create(
                         trading_bot_id=bot_id,
                         trade_type=decision["side"],
                         price=filled_price,
                         quantity=filled_qty,
+                        matched_buy_trade_id=matched_buy_id,
                     )
 
             # Persist updated state to Redis every tick

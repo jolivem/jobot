@@ -8,6 +8,7 @@ class TradeRead(BaseModel):
     trade_type: str
     price: float
     quantity: float
+    matched_buy_trade_id: int | None = None
     created_at: datetime
 
     class Config:

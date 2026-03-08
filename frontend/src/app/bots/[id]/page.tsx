@@ -238,7 +238,7 @@ export default function BotDetailPage() {
         <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 space-y-2 text-sm mb-6 border border-gray-200 dark:border-gray-800">
           <h2 className="text-lg font-semibold mb-3">Monitoring</h2>
           <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">Realized P&L</span>
+            <span className="text-gray-500 dark:text-gray-400">Realized Profit</span>
             <span
               className={`font-medium ${
                 stats.realized_profit >= 0
