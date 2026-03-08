@@ -1,0 +1,108 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              INFRASTRUCTURE                                │
+│                                                                            │
+│  ┌──────────┐     ┌───────────────────────────────────────────────────┐     │
+│  │  Caddy   │     │              Docker Compose                      │     │
+│  │  HTTPS   │     │                                                  │     │
+│  │  :80/443 │     │  ┌─────────────┐          ┌──────────────────┐   │     │
+│  │          ├─────┼──► Frontend    │          │    MariaDB 10.6  │   │     │
+│  │          │     │  │ Next.js :3000│         │    :3306          │   │     │
+│  │          │     │  └──────┬──────┘          └────────▲─────────┘   │     │
+│  │          │     │         │ fetch                    │              │     │
+│  │          ├─────┼─────────┼──────────────────────────┼──────────┐  │     │
+│  └──────────┘     │         ▼                         │          │  │     │
+│                   │  ┌─────────────┐           ┌──────┴───────┐  │  │     │
+│                   │  │  FastAPI    │           │   Redis 7    │  │  │     │
+│                   │  │  API :8000  ├───────────►   :6379      │  │  │     │
+│                   │  │             │  cache    │  broker +    │  │  │     │
+│                   │  │  - auth     │  prices   │  price cache │  │  │     │
+│                   │  │  - bots     │           │  bot state   │  │  │     │
+│                   │  │  - trades   │           └──▲───────▲───┘  │  │     │
+│                   │  │  - prices   │              │       │      │  │     │
+│                   │  │  - portfolio│              │       │      │  │     │
+│                   │  │  - simulate │              │       │      │  │     │
+│                   │  │  - symbols  │              │       │      │  │     │
+│                   │  └──────┬──────┘              │       │      │  │     │
+│                   │         │ SQLAlchemy          │       │      │  │     │
+│                   │         ▼                     │       │      │  │     │
+│                   │  ┌─────────────┐       ┌──────┴────┐ │      │  │     │
+│                   │  │  MariaDB    │       │  Celery   │ │      │  │     │
+│                   │  │  (shared)   ◄───────┤  Worker   ├─┘      │  │     │
+│                   │  │             │       │           │         │  │     │
+│                   │  └─────────────┘       │ run_bot() │         │  │     │
+│                   │                        │ cache_pr()│         │  │     │
+│                   │                        └──────▲────┘         │  │     │
+│                   │                               │              │  │     │
+│                   │                        ┌──────┴────┐         │  │     │
+│                   │                        │  Celery   │         │  │     │
+│                   │                        │  Beat     │         │  │     │
+│                   │                        │  (cron)   │         │  │     │
+│                   │                        └───────────┘         │  │     │
+│                   └──────────────────────────────────────────────┘  │     │
+└─────────────────────────────────────────────────────────────────────┘
+
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │   Binance API     │
+                    │                   │
+                    │  - Public prices  │
+                    │  - WebSocket feed │
+                    │  - Signed orders  │
+                    └───────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    BACKEND LAYERS                            │
+│                                                             │
+│  Routes (API)          Services            Repositories     │
+│  ┌──────────┐    ┌──────────────────┐    ┌──────────────┐   │
+│  │ auth     ├───►│ auth_service     ├───►│ user_repo    │   │
+│  │ bots     ├───►│ trading_bot_svc  │    │ bot_repo     │   │
+│  │ trades   │    │ trading_strategy │    │ trade_repo   │   │
+│  │ portfolio├───►│ portfolio_svc    ├───►│ portfolio_rp │   │
+│  │ simulate ├───►│ backtest_engine  │    │ token_repo   │   │
+│  │ prices   ├───►│ binance_price    │    └──────────────┘   │
+│  │ symbols  │    │ binance_trade    │           │           │
+│  │ admin    │    │ param_optimizer  │           ▼           │
+│  └──────────┘    │ klines_fetcher   │    ┌──────────────┐   │
+│       │          │ market_stats     │    │   Models     │   │
+│       │          └──────────────────┘    │  User        │   │
+│       ▼                                 │  TradingBot  │   │
+│  ┌──────────┐    ┌──────────────────┐    │  Trade       │   │
+│  │  Core    │    │  Workers         │    │  Portfolio   │   │
+│  │ config   │    │  tasks.py        │    │  Screening   │   │
+│  │ security │    │  screening_tasks │    │  RefreshToken│   │
+│  │ encrypt  │    │  websocket_wkr   │    └──────────────┘   │
+│  │ cache    │    │  celery_app      │                       │
+│  │ db       │    └──────────────────┘                       │
+│  └──────────┘                                               │
+└─────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────┐
+│                  TRADING BOT FLOW                            │
+│                                                             │
+│  Beat (every 3s)          Worker (per bot)                  │
+│  ┌───────────┐            ┌────────────────────────┐        │
+│  │cache_prices├──┐        │ run_trading_bot()      │        │
+│  └───────────┘  │        │                        │        │
+│                 ▼        │  1. Read price (Redis)  │        │
+│           ┌─────────┐    │  2. decide_trade()      │        │
+│  Binance ─► Redis   ├───►│  3. Place order         │        │
+│  prices   │ cache   │    │     (Binance API)       │        │
+│           └─────────┘    │  4. Record trade (DB)   │        │
+│                          │  5. Save state (Redis)  │        │
+│                          └────────────────────────┘        │
+│                                                             │
+│  Grid Strategy:                                             │
+│  ┌─────────────────────────────────────────────┐            │
+│  │  max_price ─────────────────────── (amber)  │            │
+│  │  grid_level_1 ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo) │            │
+│  │  grid_level_2 ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo) │            │
+│  │  grid_level_N ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo) │            │
+│  │  min_price ─────────────────────── (amber)  │            │
+│  │                                             │            │
+│  │  BUY: price hits grid level + pullback ▲    │            │
+│  │  SELL: gain >= sell_% + pullback ▼          │            │
+│  └─────────────────────────────────────────────┘            │
+└─────────────────────────────────────────────────────────────┘

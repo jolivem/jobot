@@ -231,6 +231,21 @@ class TestSell:
         sells = [d for d in decisions if d["side"] == "sell"]
         assert len(sells) == 1
         assert sells[0]["entry_price"] == 102.0
+        assert sells[0]["buy_entry"] == 100.0
+
+    def test_sell_decision_contains_buy_entry(self):
+        """Sell decisions must include buy_entry matching the position's entry price."""
+        bot = make_bot(sell_percentage=2.0)
+        prices = [
+            100.0,   # BUY at 100
+            102.5,   # 2.5% gain, highest=102.5
+            102.0,   # pullback -> SELL
+        ]
+        decisions, state = run_prices(bot, prices)
+        sells = [d for d in decisions if d["side"] == "sell"]
+        assert len(sells) == 1
+        assert sells[0]["buy_entry"] == 100.0
+        assert sells[0]["entry_price"] == 102.0
 
     def test_no_sell_without_pullback(self):
         """Price keeps rising without pullback, no sell triggered."""
@@ -321,6 +336,9 @@ class TestMultiplePositions:
         assert len(buys) == 2
         assert len(sells) == 2
         assert len(state["positions"]) == 0
+        # Each sell references its own buy entry price
+        sell_buy_entries = sorted([s["buy_entry"] for s in sells])
+        assert sell_buy_entries == pytest.approx([139.3, 150.0])
 
     def test_no_duplicate_buy_at_same_level(self):
         """After buying at a grid level, should not buy again at same level."""

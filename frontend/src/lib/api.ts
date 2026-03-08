@@ -313,6 +313,22 @@ export async function fetchBotKlines(botId: number, interval = "1h", limit = 168
   return handleResponse<Kline[]>(response);
 }
 
+// ── Account / BNB endpoints ───────────────────────────────────
+
+export async function fetchBnbBalance(): Promise<{ free: number; locked: number }> {
+  const response = await authFetch(`${API_URL}/account/bnb-balance`);
+  return handleResponse<{ free: number; locked: number }>(response);
+}
+
+export async function convertToBnb(amount: number): Promise<{ status: string; bnb_bought: number; usdc_spent: number }> {
+  const response = await authFetch(`${API_URL}/account/convert-to-bnb`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount }),
+  });
+  return handleResponse<{ status: string; bnb_bought: number; usdc_spent: number }>(response);
+}
+
 // ── Simulation types ──────────────────────────────────────────
 
 export interface BacktestMetrics {
