@@ -5,8 +5,10 @@ from app.core.db import SessionLocal
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 from app.services.binance_price_service import BinancePriceService
+from app.services.binance_trade_service import BinanceTradeService
 from app.services.trading_strategy import decide_trade, reconstruct_state_from_trades
 from app.core.cache import RedisCache
+from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -59,16 +61,31 @@ def restart_active_bots():
 
 @celery.task(name="app.workers.tasks.run_trading_bot", bind=True)
 def run_trading_bot(self, bot_id: int):
-    """Long-running task for a single trading bot (simulated mode).
+    """Long-running task for a single trading bot.
 
     Loops every second, reads price from Redis, runs the grid trading strategy,
-    and records simulated trades in the database. No real orders are placed.
+    and records trades in the database. When BINANCE_LIVE_TRADING is enabled
+    and the user has API credentials, real orders are placed on Binance.
     """
     logger.info(f"Starting trading bot task for bot_id={bot_id}")
     cache = RedisCache()
     iteration = 0
     db_check_interval = 30
     previous_price = None
+
+    # Resolve Binance trade service for live trading
+    binance_service = None
+    if settings.BINANCE_LIVE_TRADING:
+        db_user: Session = SessionLocal()
+        try:
+            user = TradingBotRepository(db_user).get_user_for_bot(bot_id)
+            if user and user.binance_api_key and user.binance_api_secret:
+                binance_service = BinanceTradeService(user.binance_api_key, user.binance_api_secret)
+                logger.info(f"Bot {bot_id}: live trading enabled")
+            else:
+                logger.warning(f"Bot {bot_id}: BINANCE_LIVE_TRADING=true but user has no API credentials, running in simulation")
+        finally:
+            db_user.close()
 
     default_state = {
         "positions": [], "lowest_price": None,
@@ -128,15 +145,36 @@ def run_trading_bot(self, bot_id: int):
             # Run grid trading strategy
             decisions, state = decide_trade(bot, price, state, previous_price)
 
-            # Record each decision in DB
+            # Execute and record each decision
             if decisions:
                 trade_repo = TradeRepository(db)
                 for decision in decisions:
+                    filled_price = decision["entry_price"]
+                    filled_qty = decision["quantity"]
+
+                    # Place real order on Binance if live trading is enabled
+                    if binance_service:
+                        try:
+                            result = binance_service.place_order(
+                                bot.symbol, decision["side"].upper(), decision["quantity"]
+                            )
+                            # Use actual filled price/qty from Binance response
+                            fills = result.get("fills", [])
+                            if fills:
+                                total_qty = sum(float(f["qty"]) for f in fills)
+                                total_cost = sum(float(f["qty"]) * float(f["price"]) for f in fills)
+                                filled_price = total_cost / total_qty if total_qty > 0 else filled_price
+                                filled_qty = total_qty
+                            logger.info(f"Bot {bot_id}: {decision['side']} {filled_qty} {bot.symbol} @ {filled_price}")
+                        except Exception as e:
+                            logger.error(f"Bot {bot_id}: Binance order failed: {e}", exc_info=True)
+                            continue  # Skip recording if real order failed
+
                     trade_repo.create(
                         trading_bot_id=bot_id,
                         trade_type=decision["side"],
-                        price=decision["entry_price"],
-                        quantity=decision["quantity"],
+                        price=filled_price,
+                        quantity=filled_qty,
                     )
 
             # Persist updated state to Redis every tick

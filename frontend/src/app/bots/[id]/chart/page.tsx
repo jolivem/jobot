@@ -44,6 +44,8 @@ export default function ChartPage() {
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const disposedRef = useRef(false);
 
   const [bot, setBot] = useState<TradingBot | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -89,10 +91,20 @@ export default function ChartPage() {
       if (!chartContainerRef.current || klines.length === 0) return;
 
       // Clean up previous chart
-      chartRef.current?.remove();
-      chartRef.current = null;
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      if (chartRef.current) {
+        disposedRef.current = true;
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
 
-      const chart = createChart(chartContainerRef.current, {
+      // Allow pending RAFs from old chart to fire harmlessly
+      requestAnimationFrame(() => {
+        disposedRef.current = false;
+      });
+
+      const chart = createChart(chartContainerRef.current!, {
         layout: {
           background: { type: ColorType.Solid, color: "#1a1a2e" },
           textColor: "#d1d5db",
@@ -102,7 +114,7 @@ export default function ChartPage() {
           horzLines: { color: "#2a2a4a" },
         },
         crosshair: { mode: CrosshairMode.Normal },
-        width: chartContainerRef.current.clientWidth,
+        width: chartContainerRef.current!.clientWidth,
         height: 500,
         timeScale: {
           timeVisible: true,
@@ -183,11 +195,13 @@ export default function ChartPage() {
 
       // Responsive resize
       const resizeObserver = new ResizeObserver((entries) => {
+        if (disposedRef.current || !chartRef.current) return;
         for (const entry of entries) {
           chart.applyOptions({ width: entry.contentRect.width });
         }
       });
-      resizeObserver.observe(chartContainerRef.current);
+      resizeObserver.observe(chartContainerRef.current!);
+      resizeObserverRef.current = resizeObserver;
 
       chart.timeScale().fitContent();
     },
@@ -209,10 +223,21 @@ export default function ChartPage() {
 
     return () => {
       cancelled = true;
-      chartRef.current?.remove();
-      chartRef.current = null;
     };
   }, [bot, trades, activeTimeframe, botId, renderChart]);
+
+  // Cleanup on unmount only
+  useEffect(() => {
+    return () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      if (chartRef.current) {
+        disposedRef.current = true;
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
