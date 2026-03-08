@@ -100,8 +100,6 @@ def run_screening(
                 "win_rate": opt.best_params.win_rate,
                 "max_drawdown": opt.best_params.max_drawdown,
                 "sharpe_ratio": opt.best_params.sharpe_ratio,
-                "test_pnl_pct": opt.test_result.total_pnl_pct,
-                "test_win_rate": opt.test_result.win_rate,
             })
 
         except Exception as e:

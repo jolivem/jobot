@@ -7,6 +7,10 @@ python scripts/run_screening.py
 # Avec export CSV
 python scripts/run_screening.py --csv screening_results.csv
 
+# Chargment
+Unicode UTF8
+Langue Anglais (USA)
+
 # Afficher le top 30
 python scripts/run_screening.py --top 30
 
@@ -23,24 +27,34 @@ Option	Défaut	Description
 --symbol	-	Tester un seul symbole
 --csv	-	Exporter en CSV
 
+Paramètres d'optimisation :
+- Plage de prix : P0 (min) à P90 (percentile 90)
+- Niveaux de grille : 10 ou 15
+- Sell % : 1%, 2%, 3%, 5%
+
 Voici les colonnes du tableau de résultats :
 
 Colonne	Signification
-#	Rang (classé par Test%)
+#	Rang (classé par P&L%)
 Symbol	La paire de trading (ex: SOLUSDC)
-Train%	P&L% sur les 70% premiers jours (données d'entraînement). C'est le meilleur résultat trouvé par l'optimisation
-Test%	P&L% sur les 30% derniers jours (données de validation). C'est la colonne la plus importante : elle montre si la stratégie tient sur des données qu'elle n'a jamais vues
+P&L%	P&L% sur l'ensemble de la période
 Trades	Nombre total d'opérations (achats + ventes)
 Win%	Pourcentage de ventes gagnantes (vente > achat après frais)
 DD%	Max Drawdown : la plus grosse perte temporaire depuis un sommet. Ex: 5% = le portefeuille a perdu au maximum 5% par rapport à son plus haut
 Sharpe	Ratio de Sharpe : rendement moyen / volatilité. Plus c'est haut, mieux c'est. > 1 = bon, > 2 = très bon
-Min	Prix minimum de la grille (borne basse)
-Max	Prix maximum de la grille (borne haute)
-Lvl	Nombre de niveaux de la grille (5, 10, ou 15)
+Trend%	Pente de la régression linéaire des prix, en %. Positif = tendance haussière, négatif = baissière. Proche de 0 = idéal pour le grid trading
+Vol%	Volatilité annualisée (écart-type des rendements par bougie × √525600). Mesure l'ampleur des fluctuations
+Range%	(prix max − prix min) / prix moyen × 100. Amplitude totale de variation sur la période
+Std%	Coefficient de variation : écart-type des prix / prix moyen × 100. Mesure la dispersion des prix autour de la moyenne
+ADR%	Average Daily Range : amplitude moyenne (high − low) / midpoint de chaque bougie, en %. Mesure l'activité intraday
+MnRev	Mean Reversion : autocorrélation lag-1 des rendements. Négatif (vert) = le prix revient vers la moyenne (bon pour grid). Positif (jaune) = le prix suit des tendances
+Min	Prix minimum de la grille (P0)
+Max	Prix maximum de la grille (P90)
+Lvl	Nombre de niveaux de la grille (10 ou 15)
 Sell%	Pourcentage de gain minimum pour déclencher une vente
 Comment lire les résultats :
 
-Un bon candidat a un Test% positif (la stratégie fonctionne hors échantillon)
-Si Train% est élevé mais Test% est nul ou négatif, c'est du surapprentissage (overfitting) - à éviter
+Un bon candidat a un P&L% positif
 Un Win% de 100% signifie que toutes les ventes ont été profitables, mais avec peu de trades ça peut être chanceux
 Un Drawdown faible et un Sharpe élevé indiquent une stratégie stable
+Pour le grid trading, privilégier : Trend% proche de 0, Range% élevé, MnRev négatif

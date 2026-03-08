@@ -20,7 +20,5 @@ class ScreeningResult(Base):
     win_rate: Mapped[float] = mapped_column(Float, nullable=False)
     max_drawdown: Mapped[float] = mapped_column(Float, nullable=False)
     sharpe_ratio: Mapped[float] = mapped_column(Float, nullable=False)
-    test_pnl_pct: Mapped[float] = mapped_column(Float, nullable=False)
-    test_win_rate: Mapped[float] = mapped_column(Float, nullable=False)
 
     created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now())

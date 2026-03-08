@@ -20,6 +20,7 @@ cd ~/github/jobot
 source .venv/bin/activate
 
 docker:
+-------
 docker start mariadbtest
 docker start redis
 docker start phpmyadmin
@@ -30,6 +31,7 @@ backend:
 --------
 celery -A app.workers.celery_app worker --loglevel=info &
 celery -A app.workers.celery_app beat --loglevel=info &
+python -m app.workers.websocket_worker &
 alembic upgrade head
 uvicorn app.main:app --reload
 
@@ -45,13 +47,6 @@ phpmyadmin: http://localhost:8080
 backend: http://localhost:8000/health
 backend: http://localhost:8000/docs
 frontend: http://localhost:3000/
-
-wsl jobot:
-alembic upgrade head
-python -m app.workers.websocket_worker &
-# Worker and beat
-celery -A app.workers.celery_app worker --loglevel=info &
-celery -A app.workers.celery_app beat --loglevel=info &
 
 
 clean:

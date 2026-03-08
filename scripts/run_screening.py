@@ -41,6 +41,7 @@ from app.services.parameter_optimizer import (
     SCREENING_SELL_PERCENTAGES,
 )
 from app.services.binance_price_service import BinancePriceService
+from app.services.market_stats import compute_market_stats
 
 
 def get_usdc_symbols() -> list[str]:
@@ -88,14 +89,21 @@ def run_screening(
             )
             elapsed = time.time() - t0
 
+            stats = compute_market_stats(klines)
+
             r = {
                 "symbol": symbol,
-                "train_pnl_pct": opt.best_params.total_pnl_pct,
-                "test_pnl_pct": opt.test_result.total_pnl_pct,
+                "pnl_pct": opt.best_params.total_pnl_pct,
                 "trades": opt.best_params.num_trades,
                 "win_rate": opt.best_params.win_rate,
                 "max_drawdown": opt.best_params.max_drawdown,
                 "sharpe": opt.best_params.sharpe_ratio,
+                "trend_pct": stats["trend_pct"],
+                "volatility_pct": stats["volatility_pct"],
+                "range_pct": stats["range_pct"],
+                "stddev_pct": stats["stddev_pct"],
+                "adr_pct": stats["adr_pct"],
+                "mean_reversion": stats["mean_reversion"],
                 "min_price": opt.best_params.min_price,
                 "max_price": opt.best_params.max_price,
                 "grid_levels": opt.best_params.grid_levels,
@@ -103,15 +111,21 @@ def run_screening(
             }
             results.append(r)
 
-            color = "\033[32m" if r["test_pnl_pct"] > 0 else "\033[31m"
+            color = "\033[32m" if r["pnl_pct"] > 0 else "\033[31m"
             reset = "\033[0m"
+            tr_color = "\033[32m" if r["trend_pct"] > 0 else "\033[31m"
+            mr_color = "\033[32m" if r["mean_reversion"] < 0 else "\033[33m"
             candle_info = f"{len(klines):>7} candles  " if source == "vision" else ""
             print(
                 f"  {progress} {symbol:<15} {candle_info}"
-                f"train: {r['train_pnl_pct']:+7.2f}%  "
-                f"test: {color}{r['test_pnl_pct']:+7.2f}%{reset}  "
+                f"P&L: {color}{r['pnl_pct']:+7.2f}%{reset}  "
                 f"trades: {r['trades']:>4}  "
                 f"win: {r['win_rate']*100:5.1f}%  "
+                f"trend: {tr_color}{r['trend_pct']:+5.1f}%{reset}  "
+                f"vol: {r['volatility_pct']:>4.0f}%  "
+                f"rng: {r['range_pct']:>5.1f}%  "
+                f"adr: {r['adr_pct']:>5.2f}%  "
+                f"mr: {mr_color}{r['mean_reversion']:+.3f}{reset}  "
                 f"({elapsed:.1f}s)"
             )
 
@@ -125,41 +139,48 @@ def run_screening(
 
 def print_results(results: list[dict], top_n: int):
     """Print ranked results table."""
-    ranked = sorted(results, key=lambda r: r["test_pnl_pct"], reverse=True)[:top_n]
+    ranked = sorted(results, key=lambda r: r["pnl_pct"], reverse=True)[:top_n]
 
-    print("\n" + "=" * 110)
-    print(f"  TOP {len(ranked)} RESULTS (ranked by test P&L%)")
-    print("=" * 110)
+    w = 145
+    print("\n" + "=" * w)
+    print(f"  TOP {len(ranked)} RESULTS (ranked by P&L%)")
+    print("=" * w)
     print(
-        f"  {'#':>3}  {'Symbol':<15} {'Train%':>8} {'Test%':>8} "
+        f"  {'#':>3}  {'Symbol':<15} {'P&L%':>8} "
         f"{'Trades':>7} {'Win%':>6} {'DD%':>6} {'Sharpe':>7} "
-        f"{'Min':>12} {'Max':>12} {'Lvl':>4} {'Sell%':>6}"
+        f"{'Trend%':>7} {'Vol%':>8} {'Range%':>7} {'Std%':>6} {'ADR%':>7} {'MnRev':>6} "
+        f"{'Lvl':>4} {'Sell%':>6}"
     )
-    print("-" * 110)
+    print("-" * w)
 
     for i, r in enumerate(ranked, 1):
-        color = "\033[32m" if r["test_pnl_pct"] > 0 else "\033[31m"
+        color = "\033[32m" if r["pnl_pct"] > 0 else "\033[31m"
         reset = "\033[0m"
+        tr_color = "\033[32m" if r["trend_pct"] > 0 else "\033[31m"
+        mr_color = "\033[32m" if r["mean_reversion"] < 0 else "\033[33m"
         print(
             f"  {i:>3}  {r['symbol']:<15} "
-            f"{r['train_pnl_pct']:>+7.2f}% "
-            f"{color}{r['test_pnl_pct']:>+7.2f}%{reset} "
+            f"{color}{r['pnl_pct']:>+7.2f}%{reset} "
             f"{r['trades']:>7} "
             f"{r['win_rate']*100:>5.1f}% "
             f"{r['max_drawdown']*100:>5.1f}% "
             f"{r['sharpe']:>7.1f} "
-            f"{r['min_price']:>12.6g} "
-            f"{r['max_price']:>12.6g} "
+            f"{tr_color}{r['trend_pct']:>+6.1f}%{reset} "
+            f"{r['volatility_pct']:>7.0f}% "
+            f"{r['range_pct']:>6.1f}% "
+            f"{r['stddev_pct']:>5.1f}% "
+            f"{r['adr_pct']:>6.2f}% "
+            f"{mr_color}{r['mean_reversion']:>+5.3f}{reset} "
             f"{r['grid_levels']:>4} "
             f"{r['sell_pct']:>5.1f}%"
         )
 
-    print("=" * 110)
+    print("=" * w)
 
 
 def save_csv(results: list[dict], path: str):
     """Export results to CSV."""
-    ranked = sorted(results, key=lambda r: r["test_pnl_pct"], reverse=True)
+    ranked = sorted(results, key=lambda r: r["pnl_pct"], reverse=True)
     if not ranked:
         return
 

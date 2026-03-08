@@ -84,7 +84,6 @@ def simulate_bot(
             symbol=bot.symbol,
             close_prices=close_prices,
             total_amount=payload.total_amount,
-            train_ratio=payload.train_ratio,
             grid_levels_options=payload.grid_levels_options,
             sell_percentage_options=payload.sell_percentage_options,
         )
@@ -96,10 +95,8 @@ def simulate_bot(
     return SimulationResponse(
         symbol=bot.symbol,
         best_params=_to_metrics(result.best_params),
-        test_result=_to_metrics(result.test_result),
         top_results=[_to_metrics(r) for r in result.all_results],
-        train_size=result.train_size,
-        test_size=result.test_size,
+        data_size=result.data_size,
         kline_interval=payload.interval,
         computed_in_ms=elapsed,
     )

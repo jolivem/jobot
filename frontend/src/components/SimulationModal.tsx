@@ -158,11 +158,8 @@ export default function SimulationModal({ bot, onClose, onApply }: Props) {
               </div>
             </div>
 
-            {/* Train vs Test Results */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <MetricsCard title={`Train (${result.train_size} candles)`} m={result.best_params} />
-              <MetricsCard title={`Test (${result.test_size} candles)`} m={result.test_result} />
-            </div>
+            {/* Results */}
+            <MetricsCard title={`Results (${result.data_size} candles)`} m={result.best_params} />
 
             {/* Top 10 Results */}
             {result.top_results.length > 1 && (
