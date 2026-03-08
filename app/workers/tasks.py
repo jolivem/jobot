@@ -9,6 +9,7 @@ from app.services.binance_trade_service import BinanceTradeService
 from app.services.trading_strategy import decide_trade, reconstruct_state_from_trades
 from app.core.cache import RedisCache
 from app.core.config import settings
+from app.core.encryption import decrypt
 import logging
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,9 @@ def run_trading_bot(self, bot_id: int):
         try:
             user = TradingBotRepository(db_user).get_user_for_bot(bot_id)
             if user and user.binance_api_key and user.binance_api_secret:
-                binance_service = BinanceTradeService(user.binance_api_key, user.binance_api_secret)
+                api_key = decrypt(user.binance_api_key)
+                api_secret = decrypt(user.binance_api_secret)
+                binance_service = BinanceTradeService(api_key, api_secret)
                 logger.info(f"Bot {bot_id}: live trading enabled")
             else:
                 logger.warning(f"Bot {bot_id}: BINANCE_LIVE_TRADING=true but user has no API credentials, running in simulation")
