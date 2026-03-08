@@ -9,6 +9,7 @@ celery = Celery(
     include=["app.workers.tasks", "app.workers.screening_tasks"],
 )
 
+celery.conf.beat_schedule_filename = "/tmp/celerybeat-schedule"
 celery.conf.beat_schedule = {
     "cache-prices-every-3s": {
         "task": "app.workers.tasks.cache_prices",
