@@ -44,6 +44,7 @@ export default function ChartPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const disposedRef = useRef(false);
@@ -175,21 +176,32 @@ export default function ChartPage() {
         return new Date(utcStr).getTime() / 1000 >= klineStartTime;
       });
 
+      const toUtc = (s: string) =>
+        s.endsWith("Z") || s.includes("+") ? s : s + "Z";
+      const snapTime = (s: string) => {
+        const sec = Math.floor(new Date(toUtc(s)).getTime() / 1000);
+        return sec - (sec % snapSeconds);
+      };
+
       if (recentTrades.length > 0) {
         const sorted = [...recentTrades].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          (a, b) => new Date(toUtc(a.created_at)).getTime() - new Date(toUtc(b.created_at)).getTime()
         );
 
         const positionNumbers = computeTradePositionNumbers(trades);
 
+        // Map snapped time → trades for tooltip lookup
+        const markersByTime = new Map<number, Array<{ trade: Trade; pos: number | undefined }>>();
+        for (const t of sorted) {
+          const snapped = snapTime(t.created_at);
+          if (!markersByTime.has(snapped)) markersByTime.set(snapped, []);
+          markersByTime.get(snapped)!.push({ trade: t, pos: positionNumbers.get(t.id) });
+        }
+
         const markers = sorted.map((t) => {
-          // Ensure created_at is interpreted as UTC (backend returns naive datetime without 'Z')
-          const utcStr = t.created_at.endsWith("Z") || t.created_at.includes("+") ? t.created_at : t.created_at + "Z";
-          const tradeTimeSec = Math.floor(new Date(utcStr).getTime() / 1000);
-          const snapped = tradeTimeSec - (tradeTimeSec % snapSeconds);
           const pos = positionNumbers.get(t.id);
           return {
-            time: snapped as UTCTimestamp,
+            time: snapTime(t.created_at) as UTCTimestamp,
             position: t.trade_type === "buy" ? ("belowBar" as const) : ("aboveBar" as const),
             color: t.trade_type === "buy" ? "#22c55e" : "#ef4444",
             shape: t.trade_type === "buy" ? ("arrowUp" as const) : ("arrowDown" as const),
@@ -198,6 +210,44 @@ export default function ChartPage() {
         });
 
         createSeriesMarkers(candleSeries, markers);
+
+        // Crosshair tooltip
+        chart.subscribeCrosshairMove((param) => {
+          const tooltip = tooltipRef.current;
+          if (!tooltip) return;
+
+          if (!param.time || !param.point) {
+            tooltip.style.display = "none";
+            return;
+          }
+
+          const tradesAtTime = markersByTime.get(param.time as number);
+          if (!tradesAtTime || tradesAtTime.length === 0) {
+            tooltip.style.display = "none";
+            return;
+          }
+
+          const parts = tradesAtTime.map(({ trade, pos }) => {
+            const date = new Date(toUtc(trade.created_at)).toLocaleString();
+            const color = trade.trade_type === "buy" ? "#22c55e" : "#ef4444";
+            return `<div style="color:${color};font-weight:600;margin-bottom:2px">${trade.trade_type.toUpperCase()}${pos !== undefined ? ` #${pos}` : ""}</div>`
+              + `<div style="color:#9ca3af">${date}</div>`
+              + `<div>Prix : <span style="font-family:monospace">${trade.price.toFixed(8)}</span></div>`
+              + `<div>Qté : <span style="font-family:monospace">${trade.quantity.toFixed(6)}</span></div>`;
+          });
+
+          tooltip.innerHTML = parts.join('<hr style="border-color:#374151;margin:6px 0">');
+
+          const containerWidth = chartContainerRef.current?.clientWidth ?? 0;
+          const tooltipWidth = 210;
+          const left = param.point.x + 14 + tooltipWidth > containerWidth
+            ? param.point.x - tooltipWidth - 14
+            : param.point.x + 14;
+
+          tooltip.style.display = "block";
+          tooltip.style.left = `${left}px`;
+          tooltip.style.top = `${Math.max(0, param.point.y - 20)}px`;
+        });
       }
 
       // Responsive resize
@@ -303,8 +353,13 @@ export default function ChartPage() {
         ))}
       </div>
 
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden relative">
         <div ref={chartContainerRef} />
+        <div
+          ref={tooltipRef}
+          className="absolute z-10 pointer-events-none bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs text-gray-200 shadow-xl"
+          style={{ minWidth: "180px", maxWidth: "210px", display: "none" }}
+        />
       </div>
 
       <div className="mt-4 flex gap-4 text-xs text-gray-500">
