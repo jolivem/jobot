@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -10,7 +11,8 @@ export default function Navbar() {
     <nav className="border-b border-gray-200 dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <Link href={isAuthenticated ? "/dashboard" : "/"} className="text-xl font-bold">
+          <Link href={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2 text-xl font-bold">
+            <Image src="/icon.svg" alt="Jobot" width={32} height={32} />
             Jobot
           </Link>
           <div className="flex gap-4 items-center">

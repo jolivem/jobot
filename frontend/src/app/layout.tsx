@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Jobot - Trading Bot",
   description: "Automated cryptocurrency trading bot",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

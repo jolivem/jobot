@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0f1e"/>
+      <stop offset="100%" style="stop-color:#111827"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff9d"/>
+      <stop offset="100%" style="stop-color:#00c97a"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff4d6d"/>
+      <stop offset="100%" style="stop-color:#cc2244"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00c8ff"/>
+      <stop offset="100%" style="stop-color:#7b61ff"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow2">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="round"><rect width="512" height="512" rx="96"/></clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- Grid lines subtiles -->
+  <g opacity="0.06" stroke="#00c8ff" stroke-width="1">
+    <line x1="0" y1="128" x2="512" y2="128"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
+    <line x1="0" y1="384" x2="512" y2="384"/>
+    <line x1="128" y1="0" x2="128" y2="512"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="384" y1="0" x2="384" y2="512"/>
+  </g>
+
+  <!-- Circuit paths -->
+  <g opacity="0.18" stroke="#00c8ff" stroke-width="1.5" fill="none">
+    <polyline points="60,420 60,390 100,390 100,360"/>
+    <polyline points="452,420 452,390 412,390 412,360"/>
+    <circle cx="100" cy="360" r="4" fill="#00c8ff"/>
+    <circle cx="412" cy="360" r="4" fill="#00c8ff"/>
+    <polyline points="60,90 60,120 90,120"/>
+    <polyline points="452,90 452,120 422,120"/>
+    <circle cx="90" cy="120" r="4" fill="#00c8ff"/>
+    <circle cx="422" cy="120" r="4" fill="#00c8ff"/>
+  </g>
+
+  <!-- Candlesticks -->
+  <g clip-path="url(#round)">
+
+    <!-- Candle 1 — bearish -->
+    <g filter="url(#glow)">
+      <line x1="138" y1="185" x2="138" y2="215" stroke="#ff4d6d" stroke-width="2.5"/>
+      <line x1="138" y1="285" x2="138" y2="315" stroke="#ff4d6d" stroke-width="2.5"/>
+      <rect x="124" y="215" width="28" height="70" rx="3" fill="url(#red)"/>
+    </g>
+
+    <!-- Candle 2 — bullish large -->
+    <g filter="url(#glow)">
+      <line x1="210" y1="155" x2="210" y2="195" stroke="#00ff9d" stroke-width="2.5"/>
+      <line x1="210" y1="310" x2="210" y2="340" stroke="#00ff9d" stroke-width="2.5"/>
+      <rect x="196" y="195" width="28" height="115" rx="3" fill="url(#green)"/>
+    </g>
+
+    <!-- Candle 3 — bullish medium -->
+    <g filter="url(#glow)">
+      <line x1="282" y1="175" x2="282" y2="210" stroke="#00ff9d" stroke-width="2.5"/>
+      <line x1="282" y1="295" x2="282" y2="325" stroke="#00ff9d" stroke-width="2.5"/>
+      <rect x="268" y="210" width="28" height="85" rx="3" fill="url(#green)"/>
+    </g>
+
+    <!-- Candle 4 — bearish small -->
+    <g filter="url(#glow)">
+      <line x1="354" y1="195" x2="354" y2="225" stroke="#ff4d6d" stroke-width="2.5"/>
+      <line x1="354" y1="290" x2="354" y2="310" stroke="#ff4d6d" stroke-width="2.5"/>
+      <rect x="340" y="225" width="28" height="65" rx="3" fill="url(#red)"/>
+    </g>
+
+    <!-- Moving average line -->
+    <polyline
+      points="110,310 138,270 210,235 282,245 354,250 402,230"
+      fill="none" stroke="url(#accent)" stroke-width="2.5"
+      stroke-linecap="round" stroke-linejoin="round"
+      filter="url(#glow2)" opacity="0.9"/>
+
+  </g>
+
+  <!-- Bot icon -->
+  <g filter="url(#glow2)">
+    <rect x="207" y="358" width="98" height="72" rx="12" fill="none" stroke="url(#accent)" stroke-width="2.5"/>
+    <rect x="222" y="332" width="68" height="32" rx="10" fill="none" stroke="url(#accent)" stroke-width="2.5"/>
+    <line x1="256" y1="332" x2="256" y2="318" stroke="#00c8ff" stroke-width="2.5"/>
+    <circle cx="256" cy="313" r="5" fill="#00c8ff" opacity="0.9"/>
+    <circle cx="242" cy="348" r="5" fill="#00ff9d" opacity="0.9"/>
+    <circle cx="270" cy="348" r="5" fill="#00ff9d" opacity="0.9"/>
+    <circle cx="230" cy="385" r="5" fill="#7b61ff" opacity="0.8"/>
+    <circle cx="256" cy="385" r="5" fill="#00c8ff" opacity="0.8"/>
+    <circle cx="282" cy="385" r="5" fill="#00ff9d" opacity="0.8"/>
+    <rect x="222" y="403" width="68" height="10" rx="5" fill="url(#accent)" opacity="0.4"/>
+  </g>
+
+  <!-- Outer border -->
+  <rect x="2" y="2" width="508" height="508" rx="95" fill="none" stroke="url(#accent)" stroke-width="2" opacity="0.3"/>
+</svg>
