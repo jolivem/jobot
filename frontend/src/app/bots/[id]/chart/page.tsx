@@ -20,6 +20,7 @@ import {
   type Trade,
   type TradingBot,
 } from "@/lib/api";
+import { computeTradePositionNumbers } from "@/lib/tradePositions";
 import { useAuth } from "@/contexts/AuthContext";
 
 const TIMEFRAMES = [
@@ -169,24 +170,30 @@ export default function ChartPage() {
 
       // Trade markers
       const klineStartTime = klines[0]?.time ?? 0;
-      const recentTrades = trades.filter(
-        (t) => new Date(t.created_at).getTime() / 1000 >= klineStartTime
-      );
+      const recentTrades = trades.filter((t) => {
+        const utcStr = t.created_at.endsWith("Z") || t.created_at.includes("+") ? t.created_at : t.created_at + "Z";
+        return new Date(utcStr).getTime() / 1000 >= klineStartTime;
+      });
 
       if (recentTrades.length > 0) {
         const sorted = [...recentTrades].sort(
           (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
 
+        const positionNumbers = computeTradePositionNumbers(trades);
+
         const markers = sorted.map((t) => {
-          const tradeTimeSec = Math.floor(new Date(t.created_at).getTime() / 1000);
+          // Ensure created_at is interpreted as UTC (backend returns naive datetime without 'Z')
+          const utcStr = t.created_at.endsWith("Z") || t.created_at.includes("+") ? t.created_at : t.created_at + "Z";
+          const tradeTimeSec = Math.floor(new Date(utcStr).getTime() / 1000);
           const snapped = tradeTimeSec - (tradeTimeSec % snapSeconds);
+          const pos = positionNumbers.get(t.id);
           return {
             time: snapped as UTCTimestamp,
             position: t.trade_type === "buy" ? ("belowBar" as const) : ("aboveBar" as const),
             color: t.trade_type === "buy" ? "#22c55e" : "#ef4444",
             shape: t.trade_type === "buy" ? ("arrowUp" as const) : ("arrowDown" as const),
-            text: "",
+            text: pos !== undefined ? `#${pos}` : "",
           };
         });
 

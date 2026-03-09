@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchAllTrades, fetchBotTrades, listBots, Trade, TradingBot } from "@/lib/api";
+import { computeTradePositionNumbers } from "@/lib/tradePositions";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function TradesPage() {
@@ -74,7 +75,7 @@ function TradesContent() {
   const botMap = Object.fromEntries(bots.map((b) => [b.id, b.symbol]));
 
   // Compute drop percentage from previous buy for each trade
-  const tradesWithDrop = computeDropFromPreviousBuy(trades, botMap);
+  const tradesWithDrop = computeDropFromPreviousBuy(trades);
 
   const selectedBot = botId ? bots.find((b) => b.id === parseInt(botId)) : null;
 
@@ -154,8 +155,10 @@ interface TradeWithDrop extends Trade {
   dropLabel: string;
 }
 
-function computeDropFromPreviousBuy(trades: Trade[], botMap: Record<number, string>): TradeWithDrop[] {
-  // Trades are sorted desc (newest first). We process per bot_id in chronological order.
+function computeDropFromPreviousBuy(trades: Trade[]): TradeWithDrop[] {
+  const positionNumbers = computeTradePositionNumbers(trades);
+
+  // Process per bot in chronological order to compute % labels
   const byBot: Record<number, Trade[]> = {};
   for (const t of trades) {
     if (!byBot[t.trading_bot_id]) byBot[t.trading_bot_id] = [];
@@ -166,20 +169,19 @@ function computeDropFromPreviousBuy(trades: Trade[], botMap: Record<number, stri
 
   for (const botId of Object.keys(byBot)) {
     const botTrades = byBot[parseInt(botId)].slice().reverse(); // chronological
-    let buyPosition = 0;
     let lastBuyPrice: number | null = null;
     const openBuys: { position: number; price: number }[] = [];
 
     for (const t of botTrades) {
+      const pos = positionNumbers.get(t.id);
       if (t.trade_type === "buy") {
-        buyPosition++;
-        let label = `#${buyPosition}`;
+        let label = `#${pos}`;
         if (lastBuyPrice !== null) {
           const drop = ((lastBuyPrice - t.price) / lastBuyPrice) * 100;
           label += ` ${drop >= 0 ? "-" : "+"}${Math.abs(drop).toFixed(2)}%`;
         }
         labelMap.set(t.id, label);
-        openBuys.push({ position: buyPosition, price: t.price });
+        openBuys.push({ position: pos!, price: t.price });
         lastBuyPrice = t.price;
       } else if (t.trade_type === "sell") {
         if (openBuys.length > 0) {
@@ -189,9 +191,7 @@ function computeDropFromPreviousBuy(trades: Trade[], botMap: Record<number, stri
         } else {
           labelMap.set(t.id, "—");
         }
-        // All positions closed → reset for next cycle
         if (openBuys.length === 0) {
-          buyPosition = 0;
           lastBuyPrice = null;
         }
       }
