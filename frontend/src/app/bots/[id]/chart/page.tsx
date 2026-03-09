@@ -7,6 +7,7 @@ import {
   createChart,
   createSeriesMarkers,
   CandlestickSeries,
+  LineSeries,
   ColorType,
   CrosshairMode,
   type IChartApi,
@@ -189,6 +190,7 @@ export default function ChartPage() {
         );
 
         const positionNumbers = computeTradePositionNumbers(trades);
+        const MARKER_COLOR = "#fef9c3"; // very light yellow
 
         // Map snapped time → trades for tooltip lookup
         const markersByTime = new Map<number, Array<{ trade: Trade; pos: number | undefined }>>();
@@ -198,18 +200,42 @@ export default function ChartPage() {
           markersByTime.get(snapped)!.push({ trade: t, pos: positionNumbers.get(t.id) });
         }
 
-        const markers = sorted.map((t) => {
-          const pos = positionNumbers.get(t.id);
-          return {
-            time: snapTime(t.created_at) as UTCTimestamp,
-            position: t.trade_type === "buy" ? ("belowBar" as const) : ("aboveBar" as const),
-            color: t.trade_type === "buy" ? "#22c55e" : "#ef4444",
-            shape: t.trade_type === "buy" ? ("arrowUp" as const) : ("arrowDown" as const),
-            text: pos !== undefined ? `#${pos}` : "",
-          };
-        });
+        // Use invisible LineSeries anchored at trade.price so markers appear at exact price level.
+        // Deduplicate by snapped time (last trade wins per candle per side).
+        const buyByTime = new Map<number, { trade: Trade; pos: number | undefined }>();
+        const sellByTime = new Map<number, { trade: Trade; pos: number | undefined }>();
+        for (const t of sorted) {
+          const snapped = snapTime(t.created_at);
+          const entry = { trade: t, pos: positionNumbers.get(t.id) };
+          if (t.trade_type === "buy") buyByTime.set(snapped, entry);
+          else sellByTime.set(snapped, entry);
+        }
 
-        createSeriesMarkers(candleSeries, markers);
+        const makeGhostSeries = (
+          entries: Map<number, { trade: Trade; pos: number | undefined }>,
+          shape: "arrowUp" | "arrowDown"
+        ) => {
+          if (entries.size === 0) return;
+          const series = chart.addSeries(LineSeries, {
+            color: "transparent",
+            lineWidth: 1,
+            crosshairMarkerVisible: false,
+            lastValueVisible: false,
+            priceLineVisible: false,
+          });
+          const sorted = [...entries.entries()].sort(([a], [b]) => a - b);
+          series.setData(sorted.map(([time, { trade }]) => ({ time: time as UTCTimestamp, value: trade.price })));
+          createSeriesMarkers(series, sorted.map(([time, { pos }]) => ({
+            time: time as UTCTimestamp,
+            position: "inBar" as const,
+            color: MARKER_COLOR,
+            shape,
+            text: pos !== undefined ? `#${pos}` : "",
+          })));
+        };
+
+        makeGhostSeries(buyByTime, "arrowUp");
+        makeGhostSeries(sellByTime, "arrowDown");
 
         // Crosshair tooltip
         chart.subscribeCrosshairMove((param) => {
@@ -370,10 +396,10 @@ export default function ChartPage() {
           <span className="inline-block w-4 h-0.5 bg-indigo-500 border-dashed" style={{ borderTop: "2px dashed #6366f1", height: 0 }} /> Grid levels
         </span>
         <span className="flex items-center gap-1">
-          <span className="text-green-500">▲</span> Buy
+          <span style={{ color: "#fef9c3" }}>▲</span> Buy
         </span>
         <span className="flex items-center gap-1">
-          <span className="text-red-500">▼</span> Sell
+          <span style={{ color: "#fef9c3" }}>▼</span> Sell
         </span>
       </div>
     </div>
