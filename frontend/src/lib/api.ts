@@ -96,16 +96,21 @@ export interface Trade {
 
 // ── Helpers ────────────────────────────────────────────────────
 
+async function parseErrorResponse(response: Response): Promise<string> {
+  const text = await response.text();
+  try {
+    const error = JSON.parse(text);
+    if (typeof error.detail === 'string') return error.detail;
+    if (Array.isArray(error.detail)) return error.detail.map((e: { msg?: string }) => e.msg || String(e)).join(', ');
+  } catch {
+    // not JSON — return status text
+  }
+  return text || response.statusText || 'An error occurred';
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json();
-    let message = 'An error occurred';
-    if (typeof error.detail === 'string') {
-      message = error.detail;
-    } else if (Array.isArray(error.detail)) {
-      message = error.detail.map((e: { msg?: string }) => e.msg || String(e)).join(', ');
-    }
-    throw new Error(message);
+    throw new Error(await parseErrorResponse(response));
   }
   return response.json();
 }
@@ -272,8 +277,7 @@ export async function deleteBot(botId: number): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to delete bot');
+    throw new Error(await parseErrorResponse(response));
   }
 }
 

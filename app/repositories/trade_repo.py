@@ -30,6 +30,12 @@ class TradeRepository:
 
     def delete_by_bot(self, trading_bot_id: int) -> int:
         """Delete all trades for a bot. Returns count of deleted rows."""
+        # Nullify self-referential FK first to avoid constraint violation on MySQL
+        self.db.query(Trade).filter(
+            Trade.trading_bot_id == trading_bot_id,
+            Trade.matched_buy_trade_id.isnot(None),
+        ).update({"matched_buy_trade_id": None})
+        self.db.flush()
         count = (
             self.db.query(Trade)
             .filter(Trade.trading_bot_id == trading_bot_id)
