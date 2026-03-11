@@ -15,6 +15,7 @@ from app.services.binance_trade_service import BinanceTradeService
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 from app.core.cache import RedisCache
+from app.core.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +243,7 @@ def emergency_sell(
 
     # Place real Binance orders if live trading is enabled
     if settings.BINANCE_LIVE_TRADING and user.binance_api_key and user.binance_api_secret:
-        binance = BinanceTradeService(user.binance_api_key, user.binance_api_secret)
+        binance = BinanceTradeService(decrypt(user.binance_api_key), decrypt(user.binance_api_secret))
         total_qty = sum(b.quantity for b in buys)
         try:
             binance.place_order(bot.symbol, "SELL", total_qty)

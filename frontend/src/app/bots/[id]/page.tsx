@@ -44,6 +44,12 @@ export default function BotDetailPage() {
   const [confirmEmergencySell, setConfirmEmergencySell] = useState(false);
   const [emergencySelling, setEmergencySelling] = useState(false);
   const [simulatingBot, setSimulatingBot] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -99,7 +105,7 @@ export default function BotDetailPage() {
     setEmergencySelling(true);
     try {
       const result = await emergencySell(bot.id);
-      alert(`Sold ${result.sold_count} position(s) at ${result.price}`);
+      showToast(`Sold ${result.sold_count} position(s) at ${result.price}`);
       setBot({ ...bot, is_active: 0 });
       setConfirmEmergencySell(false);
       // Refresh stats
@@ -107,7 +113,7 @@ export default function BotDetailPage() {
       const s = statsData.find((s) => s.bot_id === botId) ?? null;
       setStats(s);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Emergency sell failed");
+      showToast(err instanceof Error ? err.message : "Emergency sell failed", "error");
     } finally {
       setEmergencySelling(false);
     }
@@ -208,6 +214,17 @@ export default function BotDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium transition-all ${
+          toast.type === "success"
+            ? "bg-emerald-600"
+            : "bg-red-600"
+        }`}>
+          <span>{toast.type === "success" ? "✓" : "✕"}</span>
+          {toast.message}
+        </div>
+      )}
       {/* Header */}
       <div className="mb-6">
         <Link
