@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0a0f1e"/>
-      <stop offset="100%" style="stop-color:#111827"/>
+      <stop offset="0%" style="stop-color:#808080"/>
+      <stop offset="100%" style="stop-color:#606060"/>
     </linearGradient>
     <linearGradient id="green" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#00ff9d"/>
@@ -94,8 +94,8 @@
 
   <!-- Bot icon -->
   <g filter="url(#glow2)">
-    <rect x="207" y="358" width="98" height="72" rx="12" fill="none" stroke="url(#accent)" stroke-width="2.5"/>
-    <rect x="222" y="332" width="68" height="32" rx="10" fill="none" stroke="url(#accent)" stroke-width="2.5"/>
+    <rect x="207" y="358" width="98" height="72" rx="12" fill="#0a0f1e" stroke="url(#accent)" stroke-width="2.5"/>
+    <rect x="222" y="332" width="68" height="32" rx="10" fill="#0a0f1e" stroke="url(#accent)" stroke-width="2.5"/>
     <line x1="256" y1="332" x2="256" y2="318" stroke="#00c8ff" stroke-width="2.5"/>
     <circle cx="256" cy="313" r="5" fill="#00c8ff" opacity="0.9"/>
     <circle cx="242" cy="348" r="5" fill="#00ff9d" opacity="0.9"/>
