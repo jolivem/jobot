@@ -37,7 +37,6 @@ class TradingBotService:
             sell_percentage=sell_percentage,
             grid_levels=grid_levels,
         )
-        self._launch_bot_task(bot.id)
         return bot
 
     def list(self, user_id: int):

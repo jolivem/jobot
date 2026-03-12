@@ -10,7 +10,7 @@ class TradingBot(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
 
     symbol: Mapped[str] = mapped_column(String(20), index=True)  # e.g., "BTCUSDT"
-    is_active: Mapped[int] = mapped_column(Integer, default=1)  # 1=active, 0=inactive
+    is_active: Mapped[int] = mapped_column(Integer, default=0)  # 1=active, 0=inactive
 
     # Trading parameters
     max_price: Mapped[float] = mapped_column(Float, nullable=False)  # Maximum price threshold

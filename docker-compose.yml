@@ -60,7 +60,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.workers.celery_app.celery worker -l INFO
+    command: celery -A app.workers.celery_app.celery worker -l INFO -Q bots --concurrency=16 -n worker@%h
+
+  worker-short:
+    build: .
+    restart: unless-stopped
+    logging: *default-logging
+    env_file: .env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app.celery worker -l INFO -Q short --concurrency=2 -n worker-short@%h
 
   beat:
     build: .

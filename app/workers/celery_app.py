@@ -14,7 +14,14 @@ celery.conf.beat_schedule = {
     "cache-prices-every-3s": {
         "task": "app.workers.tasks.cache_prices",
         "schedule": 3.0,
+        "options": {"queue": "short"},
     },
+}
+
+celery.conf.task_routes = {
+    "app.workers.tasks.cache_prices": {"queue": "short"},
+    "app.workers.tasks.restart_active_bots": {"queue": "short"},
+    "app.workers.tasks.run_trading_bot": {"queue": "bots"},
 }
 
 

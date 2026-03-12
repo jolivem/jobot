@@ -82,7 +82,7 @@ export default function BotDetailPage() {
       const updated = await updateBot(bot.id, { is_active: newActive });
       setBot(updated);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to toggle bot");
+      showToast(err instanceof Error ? err.message : "Failed to toggle bot", "error");
     } finally {
       setToggling(false);
     }
