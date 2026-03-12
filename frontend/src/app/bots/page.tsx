@@ -338,93 +338,146 @@ export default function BotsPage() {
           </button>
         </div>
       ) : (
-        <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Symbol</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Total P&L</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Monthly P&L %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {bots.map((bot) => {
-                const s = statsMap[bot.id];
-                const unrealized =
-                  s && s.open_positions_value !== null
-                    ? s.open_positions_value - s.open_positions_cost
-                    : null;
-                const totalPnl =
-                  s && unrealized !== null
-                    ? s.realized_profit + unrealized
-                    : s
-                      ? s.realized_profit
-                      : null;
-                const monthlyPct =
-                  s && bot.total_amount > 0
-                    ? (s.monthly_realized_profit / bot.total_amount) * 100
-                    : null;
+        <>
+          {/* Mobile: cards */}
+          <div className="sm:hidden space-y-3">
+            {bots.map((bot) => {
+              const s = statsMap[bot.id];
+              const unrealized =
+                s && s.open_positions_value !== null
+                  ? s.open_positions_value - s.open_positions_cost
+                  : null;
+              const totalPnl =
+                s && unrealized !== null
+                  ? s.realized_profit + unrealized
+                  : s ? s.realized_profit : null;
+              const monthlyPct =
+                s && bot.total_amount > 0
+                  ? (s.monthly_realized_profit / bot.total_amount) * 100
+                  : null;
 
-                return (
-                  <tr key={bot.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
-                    <td className="px-4 py-3 font-medium">
-                      <Link
-                        href={`/bots/${bot.id}`}
-                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
-                      >
-                        {bot.symbol}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+              return (
+                <div key={bot.id} className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href={`/bots/${bot.id}`}
+                      className="text-base font-semibold text-blue-600 dark:text-blue-400"
+                    >
+                      {bot.symbol}
+                    </Link>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      bot.is_active
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                    }`}>
+                      {bot.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Total P&L</p>
+                      {totalPnl !== null ? (
+                        <span className={`font-medium ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                          {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(4)} $
+                        </span>
+                      ) : <span className="text-gray-400">—</span>}
+                    </div>
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Monthly P&L</p>
+                      {monthlyPct !== null ? (
+                        <span className={`font-medium ${monthlyPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                          {monthlyPct >= 0 ? "+" : ""}{monthlyPct.toFixed(2)}%
+                        </span>
+                      ) : <span className="text-gray-400">—</span>}
+                    </div>
+                  </div>
+                  <Link
+                    href={`/bots/${bot.id}/chart`}
+                    className="flex items-center justify-center gap-1 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  >
+                    📈 Chart
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden sm:block border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Symbol</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Total P&L</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Chart</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Monthly P&L</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                {bots.map((bot) => {
+                  const s = statsMap[bot.id];
+                  const unrealized =
+                    s && s.open_positions_value !== null
+                      ? s.open_positions_value - s.open_positions_cost
+                      : null;
+                  const totalPnl =
+                    s && unrealized !== null
+                      ? s.realized_profit + unrealized
+                      : s ? s.realized_profit : null;
+                  const monthlyPct =
+                    s && bot.total_amount > 0
+                      ? (s.monthly_realized_profit / bot.total_amount) * 100
+                      : null;
+
+                  return (
+                    <tr key={bot.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
+                      <td className="px-4 py-3 font-medium">
+                        <Link
+                          href={`/bots/${bot.id}`}
+                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                        >
+                          {bot.symbol}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {totalPnl !== null ? (
+                          <span className={`font-medium ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                            {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(4)} $
+                          </span>
+                        ) : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Link
+                          href={`/bots/${bot.id}/chart`}
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                        >
+                          📈 Chart
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {monthlyPct !== null ? (
+                          <span className={`font-medium ${monthlyPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                            {monthlyPct >= 0 ? "+" : ""}{monthlyPct.toFixed(2)}%
+                          </span>
+                        ) : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                           bot.is_active
                             ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                             : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                        }`}
-                      >
-                        {bot.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {totalPnl !== null ? (
-                        <span
-                          className={`font-medium ${
-                            totalPnl >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {totalPnl >= 0 ? "+" : ""}
-                          {totalPnl.toFixed(4)} $
+                        }`}>
+                          {bot.is_active ? "Active" : "Inactive"}
                         </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {monthlyPct !== null ? (
-                        <span
-                          className={`font-medium ${
-                            monthlyPct >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {monthlyPct >= 0 ? "+" : ""}
-                          {monthlyPct.toFixed(2)}%
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
