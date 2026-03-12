@@ -146,6 +146,11 @@ def decide_trade(
         if current_price <= target:
             # Price has reached the grid level, check for pullback confirmation
             pullback_price = lowest_price * (1.0 + buy_pullback_pct)
+            logger.info(
+                f"Bot {bot.id}: GRID CHECK | current={current_price:.8f} previous={previous_price:.8f} "
+                f"target={target:.8f} lowest={lowest_price:.8f} pullback_price={pullback_price:.8f} | "
+                f"falling={current_price < previous_price} pullback_ok={current_price >= pullback_price}"
+            )
             if current_price < previous_price and current_price >= pullback_price:
                 qty = bot.total_amount / bot.grid_levels / current_price
                 decisions.append({
