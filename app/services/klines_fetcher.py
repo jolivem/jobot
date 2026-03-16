@@ -62,6 +62,7 @@ def fetch_klines(
                     "low": float(k[3]),
                     "close": float(k[4]),
                     "volume": float(k[5]),
+                    "buy_quote_volume": float(k[10]) if len(k) > 10 else 0.0,
                 }
                 for k in data
             ]
@@ -145,6 +146,7 @@ def fetch_klines_vision(
                             "low": float(parts[3]),
                             "close": float(parts[4]),
                             "volume": float(parts[5]),
+                            "buy_quote_volume": float(parts[10]) if len(parts) > 10 else 0.0,
                         })
 
         except HTTPError as e:

@@ -352,8 +352,8 @@ export default function BotsPage() {
                   ? s.realized_profit + unrealized
                   : s ? s.realized_profit : null;
               const monthlyPct =
-                s && bot.total_amount > 0
-                  ? (s.monthly_realized_profit / bot.total_amount) * 100
+                s && s.monthly_buy_cost > 0
+                  ? (s.monthly_realized_profit / s.monthly_buy_cost) * 100
                   : null;
 
               return (
@@ -383,7 +383,7 @@ export default function BotsPage() {
                       ) : <span className="text-gray-400">—</span>}
                     </div>
                     <div>
-                      <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Monthly P&L</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Monthly P&L %</p>
                       {monthlyPct !== null ? (
                         <span className={`font-medium ${monthlyPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                           {monthlyPct >= 0 ? "+" : ""}{monthlyPct.toFixed(2)}%
@@ -426,8 +426,8 @@ export default function BotsPage() {
                       ? s.realized_profit + unrealized
                       : s ? s.realized_profit : null;
                   const monthlyPct =
-                    s && bot.total_amount > 0
-                      ? (s.monthly_realized_profit / bot.total_amount) * 100
+                    s && s.monthly_buy_cost > 0
+                      ? (s.monthly_realized_profit / s.monthly_buy_cost) * 100
                       : null;
 
                   return (

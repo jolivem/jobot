@@ -48,6 +48,7 @@ Range%	(prix max − prix min) / prix moyen × 100. Amplitude totale de variatio
 Std%	Coefficient de variation : écart-type des prix / prix moyen × 100. Mesure la dispersion des prix autour de la moyenne
 ADR%	Average Daily Range : amplitude moyenne (high − low) / midpoint de chaque bougie, en %. Mesure l'activité intraday
 MnRev	Mean Reversion : autocorrélation lag-1 des rendements. Négatif (vert) = le prix revient vers la moyenne (bon pour grid). Positif (jaune) = le prix suit des tendances
+BuyVol	Volume d'achat cumulé (taker buy quote volume en USDC) sur toute la période. Indique la pression acheteuse et la liquidité du marché. Affiché en K/M/B
 Min	Prix minimum de la grille (P0)
 Max	Prix maximum de la grille (P90)
 Lvl	Nombre de niveaux de la grille (10 ou 15)

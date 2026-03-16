@@ -198,8 +198,8 @@ export default function BotDetailPage() {
       ? stats.realized_profit + unrealized
       : null;
   const monthlyPct =
-    stats && bot.total_amount > 0
-      ? (stats.monthly_realized_profit / bot.total_amount) * 100
+    stats && stats.monthly_buy_cost > 0
+      ? (stats.monthly_realized_profit / stats.monthly_buy_cost) * 100
       : null;
 
   // Grid step between two levels

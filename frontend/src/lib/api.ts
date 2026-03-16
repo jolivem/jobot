@@ -78,6 +78,7 @@ export interface BotStats {
   symbol: string;
   realized_profit: number;
   monthly_realized_profit: number;
+  monthly_buy_cost: number;
   open_positions_count: number;
   open_positions_cost: number;
   current_price: number | null;

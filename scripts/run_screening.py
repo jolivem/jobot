@@ -91,6 +91,9 @@ def run_screening(
 
             stats = compute_market_stats(klines)
 
+            # Cumulative taker buy quote volume (in USDC)
+            cum_buy_vol = sum(k.get("buy_quote_volume", 0.0) for k in klines)
+
             r = {
                 "symbol": symbol,
                 "pnl_pct": opt.best_params.total_pnl_pct,
@@ -104,6 +107,7 @@ def run_screening(
                 "stddev_pct": stats["stddev_pct"],
                 "adr_pct": stats["adr_pct"],
                 "mean_reversion": stats["mean_reversion"],
+                "cum_buy_vol": cum_buy_vol,
                 "min_price": opt.best_params.min_price,
                 "max_price": opt.best_params.max_price,
                 "grid_levels": opt.best_params.grid_levels,
@@ -141,7 +145,7 @@ def print_results(results: list[dict], top_n: int):
     """Print ranked results table."""
     ranked = sorted(results, key=lambda r: r["pnl_pct"], reverse=True)[:top_n]
 
-    w = 145
+    w = 161
     print("\n" + "=" * w)
     print(f"  TOP {len(ranked)} RESULTS (ranked by P&L%)")
     print("=" * w)
@@ -149,6 +153,7 @@ def print_results(results: list[dict], top_n: int):
         f"  {'#':>3}  {'Symbol':<15} {'P&L%':>8} "
         f"{'Trades':>7} {'Win%':>6} {'DD%':>6} {'Sharpe':>7} "
         f"{'Trend%':>7} {'Vol%':>8} {'Range%':>7} {'Std%':>6} {'ADR%':>7} {'MnRev':>6} "
+        f"{'BuyVol':>14} "
         f"{'Lvl':>4} {'Sell%':>6}"
     )
     print("-" * w)
@@ -171,6 +176,7 @@ def print_results(results: list[dict], top_n: int):
             f"{r['stddev_pct']:>5.1f}% "
             f"{r['adr_pct']:>6.2f}% "
             f"{mr_color}{r['mean_reversion']:>+5.3f}{reset} "
+            f"{r.get('cum_buy_vol', 0.0):>14.0f} "
             f"{r['grid_levels']:>4} "
             f"{r['sell_pct']:>5.1f}%"
         )
