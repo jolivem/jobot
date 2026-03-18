@@ -73,37 +73,42 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
         trades.sort(key=lambda t: t.created_at)
 
         buys_by_id = {t.id: t for t in trades if t.trade_type == "buy"}
+        buy_queue = [t for t in trades if t.trade_type == "buy"]
         matched_buy_ids = set()
         realized_profit = 0.0
         monthly_realized_profit = 0.0
         monthly_buy_cost = 0.0
 
-        # First pass: sells with explicit matched_buy_trade_id
+        # Match each sell to its buy: use matched_buy_trade_id when valid, FIFO fallback otherwise
         for t in trades:
-            if t.trade_type == "sell" and t.matched_buy_trade_id and t.matched_buy_trade_id in buys_by_id:
-                buy = buys_by_id[t.matched_buy_trade_id]
-                matched_buy_ids.add(buy.id)
-                buy_fee = buy.price * buy.quantity * settings.FEE_PCT
-                sell_fee = t.price * t.quantity * settings.FEE_PCT
-                profit = (t.price - buy.price) * t.quantity - buy_fee - sell_fee
-                realized_profit += profit
-                if t.created_at >= month_start:
-                    monthly_realized_profit += profit
-                    monthly_buy_cost += buy.price * buy.quantity
+            if t.trade_type != "sell":
+                continue
 
-        # Second pass: legacy sells without matched_buy_trade_id (FIFO fallback)
-        unmatched_buys = [t for t in trades if t.trade_type == "buy" and t.id not in matched_buy_ids]
-        for t in trades:
-            if t.trade_type == "sell" and not t.matched_buy_trade_id and unmatched_buys:
-                buy = unmatched_buys.pop(0)
-                matched_buy_ids.add(buy.id)
-                buy_fee = buy.price * buy.quantity * settings.FEE_PCT
-                sell_fee = t.price * t.quantity * settings.FEE_PCT
-                profit = (t.price - buy.price) * t.quantity - buy_fee - sell_fee
-                realized_profit += profit
-                if t.created_at >= month_start:
-                    monthly_realized_profit += profit
-                    monthly_buy_cost += buy.price * buy.quantity
+            buy = None
+            # Try explicit matched_buy_trade_id first
+            if t.matched_buy_trade_id and t.matched_buy_trade_id in buys_by_id:
+                candidate = buys_by_id[t.matched_buy_trade_id]
+                if candidate.id not in matched_buy_ids:
+                    buy = candidate
+
+            # FIFO fallback: oldest unmatched buy
+            if buy is None:
+                for b in buy_queue:
+                    if b.id not in matched_buy_ids:
+                        buy = b
+                        break
+
+            if buy is None:
+                continue
+
+            matched_buy_ids.add(buy.id)
+            buy_fee = buy.price * buy.quantity * settings.FEE_PCT
+            sell_fee = t.price * t.quantity * settings.FEE_PCT
+            profit = (t.price - buy.price) * t.quantity - buy_fee - sell_fee
+            realized_profit += profit
+            if t.created_at >= month_start:
+                monthly_realized_profit += profit
+                monthly_buy_cost += buy.price * buy.quantity
 
         # Open positions = buys not matched to any sell
         open_buys = [t for t in trades if t.trade_type == "buy" and t.id not in matched_buy_ids]
