@@ -3,12 +3,13 @@
 import json
 import time
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, date, timedelta, timezone
 
 from app.workers.celery_app import celery
 from app.core.cache import RedisCache
 from app.services.binance_price_service import BinancePriceService
-from app.services.klines_fetcher import fetch_klines
+from app.services.klines_fetcher import fetch_klines_by_day
+from app.services.klines_store import get_missing_days, load_days, save_day
 from app.services.parameter_optimizer import (
     optimize_parameters,
     SCREENING_GRID_LEVELS,
@@ -19,7 +20,7 @@ from app.models.screening_result import ScreeningResult
 
 logger = logging.getLogger(__name__)
 
-BATCH_DELAY = 0.5  # seconds between kline fetches (Binance rate limiting)
+BATCH_DELAY = 0.5  # seconds between Binance API calls (rate limiting)
 
 
 @celery.task(name="app.workers.screening_tasks.run_screening", bind=True, acks_late=True)
@@ -27,13 +28,13 @@ def run_screening(
     self,
     user_id: int,
     interval: str = "1h",
-    limit: int = 2000,
+    days: int = 7,
     total_amount: float = 1000.0,
 ):
     """Screen all USDC pairs for grid trading profitability.
 
     For each symbol:
-    1. Fetch historical klines from Binance.
+    1. Check local klines cache, fetch missing days from Binance.
     2. Run parameter optimization (reduced grid for speed).
     3. Store incremental progress in Redis for polling.
     4. Store final results in database.
@@ -54,6 +55,10 @@ def run_screening(
     results: list[dict] = []
     started_at = datetime.now(timezone.utc).isoformat()
 
+    # Compute screening dates: yesterday back to N days ago
+    today = datetime.now(timezone.utc).date()
+    dates = [today - timedelta(days=d) for d in range(days, 0, -1)]
+
     def update_progress(processed: int, status: str = "running"):
         progress_data = {
             "task_id": task_id,
@@ -68,15 +73,24 @@ def run_screening(
         cache.client.setex(redis_key, 3600, json.dumps(progress_data))
 
     update_progress(0)
-    logger.info(f"Screening {task_id}: starting on {total} symbols")
+    logger.info(f"Screening {task_id}: starting on {total} symbols, {len(dates)} days ({dates[0]} to {dates[-1]})")
 
     for i, symbol in enumerate(symbols):
         try:
-            klines = fetch_klines(symbol=symbol, interval=interval, limit=limit)
+            # Fetch and store missing days
+            missing = get_missing_days(symbol, interval, dates)
+            for day in missing:
+                klines = fetch_klines_by_day(symbol=symbol, interval=interval, day=day)
+                if klines:
+                    save_day(symbol, interval, day, klines)
+                time.sleep(BATCH_DELAY)
+
+            # Load all days from local storage
+            klines = load_days(symbol, interval, dates)
+
             if len(klines) < 200:
                 logger.debug(f"Screening: skipping {symbol} ({len(klines)} klines)")
                 update_progress(i + 1)
-                time.sleep(BATCH_DELAY)
                 continue
 
             close_prices = [k["close"] for k in klines]
@@ -106,7 +120,6 @@ def run_screening(
             logger.warning(f"Screening: failed on {symbol}: {e}")
 
         update_progress(i + 1)
-        time.sleep(BATCH_DELAY)
 
     # Persist final results to database
     db = SessionLocal()

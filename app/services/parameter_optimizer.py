@@ -6,10 +6,10 @@ from app.services.backtest_engine import run_backtest, BacktestResult
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_GRID_LEVELS = [3, 5, 7, 10, 15, 20]
-DEFAULT_SELL_PERCENTAGES = [0.5, 1.0, 1.5, 2.0, 3.0, 5.0]
+DEFAULT_GRID_LEVELS = [7, 10, 15]
+DEFAULT_SELL_PERCENTAGES = [2.0, 3.0, 4.0]
 SCREENING_GRID_LEVELS = [10, 15]
-SCREENING_SELL_PERCENTAGES = [1.0, 2.0, 3.0, 5.0]
+SCREENING_SELL_PERCENTAGES = [2.0, 3.0, 4.0]
 
 
 @dataclass

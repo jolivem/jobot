@@ -53,6 +53,9 @@ logs/
 *.sqlite
 *.sqlite3
 
+# Klines local cache
+data/klines/
+
 # Celery
 celerybeat-schedule
 celerybeat.pid

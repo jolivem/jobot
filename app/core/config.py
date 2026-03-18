@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
     BINANCE_BASE_URL: str = "https://api.binance.com"
+    KLINES_DATA_DIR: str = "/mnt/e/data/klines"
 
     # Binance API Keys (optional - for trading)
     BINANCE_API_KEY: str | None = None
