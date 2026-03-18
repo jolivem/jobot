@@ -408,6 +408,7 @@ export default function BotsPage() {
               <thead className="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Symbol</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Amount</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Total P&L</th>
                   <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Chart</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Monthly P&L</th>
@@ -439,6 +440,9 @@ export default function BotsPage() {
                         >
                           {bot.symbol}
                         </Link>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium">
+                        {bot.total_amount} $
                       </td>
                       <td className="px-4 py-3 text-right">
                         {totalPnl !== null ? (

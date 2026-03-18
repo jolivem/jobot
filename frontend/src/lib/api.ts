@@ -81,6 +81,7 @@ export interface BotStats {
   monthly_buy_cost: number;
   open_positions_count: number;
   open_positions_cost: number;
+  open_positions_qty: number;
   current_price: number | null;
   open_positions_value: number | null;
 }
@@ -285,6 +286,16 @@ export async function deleteBot(botId: number): Promise<void> {
 export async function fetchBotStats(): Promise<BotStats[]> {
   const response = await authFetch(`${API_URL}/trading-bots/stats`);
   return handleResponse<BotStats[]>(response);
+}
+
+export interface ProfitPoint {
+  time: number;
+  value: number;
+}
+
+export async function fetchProfitHistory(): Promise<ProfitPoint[]> {
+  const response = await authFetch(`${API_URL}/trading-bots/profit-history`);
+  return handleResponse<ProfitPoint[]>(response);
 }
 
 export async function fetchAllTrades(): Promise<Trade[]> {

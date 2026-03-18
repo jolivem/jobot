@@ -271,7 +271,7 @@ export default function BotDetailPage() {
             <>
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">
-                  Open ({stats.open_positions_count} pos)
+                  Open ({stats.open_positions_count} pos / {stats.open_positions_qty.toFixed(6)} tokens)
                 </span>
                 <span className="font-medium">
                   {stats.open_positions_cost.toFixed(4)} $

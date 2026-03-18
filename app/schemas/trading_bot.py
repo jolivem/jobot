@@ -28,6 +28,7 @@ class BotStats(BaseModel):
     monthly_buy_cost: float
     open_positions_count: int
     open_positions_cost: float
+    open_positions_qty: float
     current_price: float | None
     open_positions_value: float | None
 

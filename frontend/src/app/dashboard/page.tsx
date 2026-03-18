@@ -1,9 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchBnbBalance, convertToBnb } from "@/lib/api";
+import { fetchBnbBalance, convertToBnb, fetchProfitHistory, type ProfitPoint } from "@/lib/api";
+import {
+  createChart,
+  LineSeries,
+  ColorType,
+  type IChartApi,
+  type UTCTimestamp,
+} from "lightweight-charts";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -17,6 +24,10 @@ export default function DashboardPage() {
   const [converting, setConverting] = useState(false);
   const [convertResult, setConvertResult] = useState<string | null>(null);
   const [convertError, setConvertError] = useState<string | null>(null);
+
+  const [profitData, setProfitData] = useState<ProfitPoint[]>([]);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push("/login");
@@ -37,6 +48,75 @@ export default function DashboardPage() {
         .finally(() => setBnbLoading(false));
     }
   }, [user]);
+
+  useEffect(() => {
+    if (loading || !isAuthenticated) return;
+    fetchProfitHistory()
+      .then(setProfitData)
+      .catch(() => setProfitData([]));
+  }, [loading, isAuthenticated]);
+
+  // Render chart
+  useEffect(() => {
+    if (!chartContainerRef.current || profitData.length === 0) return;
+
+    const isDark = document.documentElement.classList.contains("dark");
+    const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: 300,
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: isDark ? "#9ca3af" : "#6b7280",
+      },
+      grid: {
+        vertLines: { color: isDark ? "#1f2937" : "#e5e7eb" },
+        horzLines: { color: isDark ? "#1f2937" : "#e5e7eb" },
+      },
+      rightPriceScale: {
+        borderColor: isDark ? "#374151" : "#d1d5db",
+      },
+      timeScale: {
+        borderColor: isDark ? "#374151" : "#d1d5db",
+        timeVisible: true,
+      },
+      crosshair: { mode: 0 },
+    });
+
+    const lastValue = profitData[profitData.length - 1]?.value ?? 0;
+    const lineColor = lastValue >= 0 ? "#22c55e" : "#ef4444";
+
+    const series = chart.addSeries(LineSeries, {
+      color: lineColor,
+      lineWidth: 2,
+      priceFormat: { type: "price", precision: 4, minMove: 0.0001 },
+    });
+
+    // Deduplicate timestamps (keep last value per timestamp)
+    const deduped = new Map<number, number>();
+    for (const p of profitData) {
+      deduped.set(p.time, p.value);
+    }
+    const data = Array.from(deduped.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([time, value]) => ({ time: time as UTCTimestamp, value }));
+
+    series.setData(data);
+    chart.timeScale().fitContent();
+    chartRef.current = chart;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    });
+    resizeObserver.observe(chartContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      chart.remove();
+      chartRef.current = null;
+    };
+  }, [profitData]);
 
   const handleConvert = async () => {
     const amount = parseFloat(convertAmount);
@@ -76,6 +156,16 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+
+      {/* Cumulative Profit Chart */}
+      <div className="mb-8 p-6 border border-gray-200 dark:border-gray-800 rounded-xl">
+        <h2 className="text-lg font-semibold mb-4">Cumulative Profit</h2>
+        {profitData.length > 0 ? (
+          <div ref={chartContainerRef} />
+        ) : (
+          <p className="text-gray-400 text-sm">No trade data yet.</p>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-xl">

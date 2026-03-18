@@ -113,6 +113,7 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
         # Open positions = buys not matched to any sell
         open_buys = [t for t in trades if t.trade_type == "buy" and t.id not in matched_buy_ids]
         open_cost = sum(b.price * b.quantity for b in open_buys)
+        open_qty = sum(b.quantity for b in open_buys)
 
         # Current price from Redis
         current_price = None
@@ -133,11 +134,61 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
             monthly_buy_cost=round(monthly_buy_cost, 6),
             open_positions_count=len(open_buys),
             open_positions_cost=round(open_cost, 6),
+            open_positions_qty=round(open_qty, 6),
             current_price=current_price,
             open_positions_value=round(open_value, 6) if open_value is not None else None,
         ))
 
     return results
+
+
+@router.get("/profit-history")
+def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Return cumulative realized profit over time across all user bots."""
+    bots = TradingBotService(db).list(user.id)
+    if not bots:
+        return []
+
+    trade_repo = TradeRepository(db)
+    all_trades = trade_repo.list_by_bots([b.id for b in bots])
+    all_trades.sort(key=lambda t: t.created_at)
+
+    # Build buys_by_id and match sells to buys (same logic as stats)
+    buys_by_id = {t.id: t for t in all_trades if t.trade_type == "buy"}
+    buy_queue = [t for t in all_trades if t.trade_type == "buy"]
+    matched_buy_ids: set = set()
+
+    points = []
+    cumulative = 0.0
+
+    for t in all_trades:
+        if t.trade_type != "sell":
+            continue
+
+        buy = None
+        if t.matched_buy_trade_id and t.matched_buy_trade_id in buys_by_id:
+            candidate = buys_by_id[t.matched_buy_trade_id]
+            if candidate.id not in matched_buy_ids:
+                buy = candidate
+        if buy is None:
+            for b in buy_queue:
+                if b.id not in matched_buy_ids:
+                    buy = b
+                    break
+        if buy is None:
+            continue
+
+        matched_buy_ids.add(buy.id)
+        buy_fee = buy.price * buy.quantity * settings.FEE_PCT
+        sell_fee = t.price * t.quantity * settings.FEE_PCT
+        profit = (t.price - buy.price) * t.quantity - buy_fee - sell_fee
+        cumulative += profit
+        points.append({
+            "time": int(t.created_at.timestamp()),
+            "value": round(cumulative, 4),
+        })
+
+    return points
 
 
 @router.get("/{bot_id}", response_model=TradingBotRead)
