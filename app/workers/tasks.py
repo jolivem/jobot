@@ -187,6 +187,15 @@ def run_trading_bot(self, bot_id: int):
                         matched_buy_trade_id=matched_buy_id,
                     )
 
+                    # Sync state positions with actual Binance fill
+                    if binance_service and decision["side"] == "buy":
+                        for pos in reversed(state.get("positions", [])):
+                            if abs(pos["entry"] - decision["entry_price"]) < 1e-8:
+                                pos["qty"] = filled_qty
+                                pos["entry"] = filled_price
+                                pos["fee"] = filled_qty * filled_price * settings.FEE_PCT
+                                break
+
             # Persist updated state to Redis every tick
             cache.set_bot_state(bot_id, state)
 

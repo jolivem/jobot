@@ -21,16 +21,13 @@ export function computeTradePositionNumbers(trades: Trade[]): Map<number, number
 
     for (const t of botTrades) {
       if (t.trade_type === "buy") {
-        buyPosition++;
-        posMap.set(t.id, buyPosition);
-        openBuys.push({ position: buyPosition, price: t.price });
+        const pos = openBuys.length + 1;
+        posMap.set(t.id, pos);
+        openBuys.push({ position: pos, price: t.price });
       } else if (t.trade_type === "sell") {
         if (openBuys.length > 0) {
           const matched = openBuys.pop()!;
           posMap.set(t.id, matched.position);
-        }
-        if (openBuys.length === 0) {
-          buyPosition = 0;
         }
       }
     }
