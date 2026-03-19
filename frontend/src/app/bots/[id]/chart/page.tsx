@@ -200,42 +200,54 @@ export default function ChartPage() {
           markersByTime.get(snapped)!.push({ trade: t, pos: positionNumbers.get(t.id) });
         }
 
-        // Use invisible LineSeries anchored at trade.price so markers appear at exact price level.
-        // Deduplicate by snapped time (last trade wins per candle per side).
-        const buyByTime = new Map<number, { trade: Trade; pos: number | undefined }>();
-        const sellByTime = new Map<number, { trade: Trade; pos: number | undefined }>();
-        for (const t of sorted) {
-          const snapped = snapTime(t.created_at);
-          const entry = { trade: t, pos: positionNumbers.get(t.id) };
-          if (t.trade_type === "buy") buyByTime.set(snapped, entry);
-          else sellByTime.set(snapped, entry);
-        }
+        // Group trades by snapped time, keeping ALL trades (no dedup).
+        // Each unique price level at the same candle gets its own ghost series
+        // so multiple markers can appear on the same candle.
+        const buys = sorted.filter((t) => t.trade_type === "buy");
+        const sells = sorted.filter((t) => t.trade_type === "sell");
 
         const makeGhostSeries = (
-          entries: Map<number, { trade: Trade; pos: number | undefined }>,
+          tradesToMark: Trade[],
           shape: "arrowUp" | "arrowDown"
         ) => {
-          if (entries.size === 0) return;
-          const series = chart.addSeries(LineSeries, {
-            color: "transparent",
-            lineWidth: 1,
-            crosshairMarkerVisible: false,
-            lastValueVisible: false,
-            priceLineVisible: false,
-          });
-          const sorted = [...entries.entries()].sort(([a], [b]) => a - b);
-          series.setData(sorted.map(([time, { trade }]) => ({ time: time as UTCTimestamp, value: trade.price })));
-          createSeriesMarkers(series, sorted.map(([time, { pos }]) => ({
-            time: time as UTCTimestamp,
-            position: "inBar" as const,
-            color: MARKER_COLOR,
-            shape,
-            text: pos !== undefined ? `#${pos}` : "",
-          })));
+          if (tradesToMark.length === 0) return;
+
+          // Group by snapped time; trades at the same time but different prices
+          // need separate series since a series can only have one point per time.
+          // We assign each trade at the same snapped time to a different "lane".
+          const lanes: Array<Array<{ time: number; trade: Trade; pos: number | undefined }>> = [];
+          const timeSlotCount = new Map<number, number>();
+
+          for (const t of tradesToMark) {
+            const snapped = snapTime(t.created_at);
+            const slot = timeSlotCount.get(snapped) ?? 0;
+            timeSlotCount.set(snapped, slot + 1);
+            if (!lanes[slot]) lanes[slot] = [];
+            lanes[slot].push({ time: snapped, trade: t, pos: positionNumbers.get(t.id) });
+          }
+
+          for (const lane of lanes) {
+            const series = chart.addSeries(LineSeries, {
+              color: "transparent",
+              lineWidth: 1,
+              crosshairMarkerVisible: false,
+              lastValueVisible: false,
+              priceLineVisible: false,
+            });
+            const sortedLane = lane.sort((a, b) => a.time - b.time);
+            series.setData(sortedLane.map((e) => ({ time: e.time as UTCTimestamp, value: e.trade.price })));
+            createSeriesMarkers(series, sortedLane.map((e) => ({
+              time: e.time as UTCTimestamp,
+              position: "inBar" as const,
+              color: MARKER_COLOR,
+              shape,
+              text: e.pos !== undefined ? `#${e.pos}` : "",
+            })));
+          }
         };
 
-        makeGhostSeries(buyByTime, "arrowUp");
-        makeGhostSeries(sellByTime, "arrowDown");
+        makeGhostSeries(buys, "arrowUp");
+        makeGhostSeries(sells, "arrowDown");
 
         // Crosshair tooltip
         chart.subscribeCrosshairMove((param) => {
