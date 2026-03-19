@@ -31,7 +31,7 @@ export default function VerifyEmailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="max-w-md w-full mx-auto px-4 text-center">
-          <div className="animate-spin text-4xl mb-4">&#9881;</div>
+          <div className="inline-block h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
           <h2 className="text-xl font-semibold">Verifying your email...</h2>
         </div>
       </div>
@@ -42,7 +42,7 @@ export default function VerifyEmailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="max-w-md w-full mx-auto px-4">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+          <div className="bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
             <div className="text-4xl mb-4">&#10060;</div>
             <h2 className="text-xl font-semibold mb-2">Verification Failed</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -53,7 +53,7 @@ export default function VerifyEmailPage() {
             </p>
             <Link
               href="/register"
-              className="inline-block mt-6 text-blue-600 hover:text-blue-700"
+              className="inline-block mt-6 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium"
             >
               Try registering again
             </Link>
@@ -66,7 +66,7 @@ export default function VerifyEmailPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
       <div className="max-w-md w-full mx-auto px-4">
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 text-center">
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6 text-center">
           <div className="text-4xl mb-4">&#10004;</div>
           <h2 className="text-xl font-semibold mb-2">Email Verified!</h2>
           <p className="text-gray-600 dark:text-gray-400">
@@ -74,7 +74,7 @@ export default function VerifyEmailPage() {
           </p>
           <Link
             href="/login"
-            className="inline-block mt-6 px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+            className="inline-block mt-6 px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition shadow-lg shadow-emerald-500/25"
           >
             Go to Login
           </Link>

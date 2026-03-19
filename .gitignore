@@ -68,4 +68,4 @@ celerybeat.pid
 .DS_Store
 Thumbs.db
 
-screening_results*
+screening/

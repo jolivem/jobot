@@ -32,7 +32,7 @@ function pnlColor(val: number) {
 
 function MetricsCard({ title, m }: { title: string; m: BacktestMetrics }) {
   return (
-    <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900/50 space-y-2">
+    <div className="p-4 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 space-y-2">
       <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
         {title}
       </h4>
@@ -115,7 +115,7 @@ export default function SimulationModal({ bot, onClose, onApply }: Props) {
             </p>
             <button
               onClick={runSimulation}
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition shadow-lg shadow-emerald-500/25"
             >
               Run Optimization
             </button>
@@ -124,7 +124,7 @@ export default function SimulationModal({ bot, onClose, onApply }: Props) {
 
         {loading && (
           <div className="text-center py-12 space-y-3">
-            <div className="inline-block h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="inline-block h-8 w-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-gray-500 dark:text-gray-400">
               Analyzing parameter combinations...
             </p>
@@ -134,8 +134,8 @@ export default function SimulationModal({ bot, onClose, onApply }: Props) {
         {result && (
           <>
             {/* Best Parameters */}
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-3">
+            <div className="p-4 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800">
+              <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-3">
                 Best Parameters
               </h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -209,7 +209,7 @@ export default function SimulationModal({ bot, onClose, onApply }: Props) {
               <button
                 onClick={applyParams}
                 disabled={applying}
-                className="flex-1 py-2.5 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition disabled:opacity-50 shadow-lg shadow-emerald-500/25"
               >
                 {applying ? "Applying..." : "Apply Best Parameters"}
               </button>

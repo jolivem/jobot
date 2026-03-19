@@ -176,7 +176,7 @@ export default function BotDetailPage() {
           <p className="text-red-500 text-lg mb-4">{error || "Bot not found"}</p>
           <Link
             href="/bots"
-            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+            className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition"
           >
             Back to Bots
           </Link>
@@ -186,7 +186,7 @@ export default function BotDetailPage() {
   }
 
   const editInputClass =
-    "w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
+    "w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent";
 
   // Compute P&L values
   const unrealized =
@@ -252,8 +252,8 @@ export default function BotDetailPage() {
 
       {/* Monitoring - Stats */}
       {stats && (
-        <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 space-y-2 text-sm mb-6 border border-gray-200 dark:border-gray-800">
-          <h2 className="text-lg font-semibold mb-3">Monitoring</h2>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/5 to-teal-500/5 space-y-2 text-sm mb-6 border border-emerald-500/20">
+          <h2 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-400">Monitoring</h2>
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Realized Profit</span>
             <span
@@ -354,8 +354,8 @@ export default function BotDetailPage() {
       )}
 
       {/* Settings */}
-      <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 mb-6">
-        <h2 className="text-lg font-semibold mb-3">Settings</h2>
+      <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border border-blue-500/20 mb-6">
+        <h2 className="text-lg font-semibold mb-3 text-blue-700 dark:text-blue-400">Settings</h2>
 
         {editingBot ? (
           <div className="space-y-3">
@@ -445,7 +445,7 @@ export default function BotDetailPage() {
               <button
                 onClick={handleEditSave}
                 disabled={editSaving}
-                className="flex-1 py-2 px-3 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                className="flex-1 py-2 px-3 text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition disabled:opacity-50"
               >
                 {editSaving ? "Saving..." : "Save"}
               </button>

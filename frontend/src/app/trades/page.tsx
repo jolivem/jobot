@@ -88,7 +88,7 @@ function TradesContent() {
             <p className="text-gray-500 mt-1">
               Filtered by bot: <span className="font-medium">{selectedBot.symbol}</span>
               {" "}
-              <Link href="/trades" className="text-blue-600 hover:underline text-sm">
+              <Link href="/trades" className="text-emerald-600 dark:text-emerald-400 hover:underline text-sm">
                 (show all)
               </Link>
             </p>
@@ -106,13 +106,13 @@ function TradesContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800 text-left">
-                <th className="py-3 px-4 font-medium text-gray-500">Date</th>
-                <th className="py-3 px-4 font-medium text-gray-500">Symbol</th>
-                <th className="py-3 px-4 font-medium text-gray-500">Type</th>
-                <th className="py-3 px-4 font-medium text-gray-500 text-right">Price</th>
-                <th className="py-3 px-4 font-medium text-gray-500 text-right">Quantity</th>
-                <th className="py-3 px-4 font-medium text-gray-500 text-right">Position</th>
+              <tr className="border-b border-gray-200 dark:border-gray-800 text-left bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/30">
+                <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Date</th>
+                <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Symbol</th>
+                <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Type</th>
+                <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400 text-right">Price</th>
+                <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400 text-right">Quantity</th>
+                <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400 text-right">Position</th>
               </tr>
             </thead>
             <tbody>

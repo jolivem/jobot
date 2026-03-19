@@ -225,17 +225,21 @@ def print_results(results: list[dict], top_n: int):
 
 
 def save_csv(results: list[dict], path: str):
-    """Export results to CSV."""
+    """Export results to CSV inside the screening/ directory."""
     ranked = sorted(results, key=lambda r: r["pnl_pct"], reverse=True)
     if not ranked:
         return
 
-    with open(path, "w", newline="") as f:
+    screening_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "screening")
+    os.makedirs(screening_dir, exist_ok=True)
+    full_path = os.path.join(screening_dir, os.path.basename(path))
+
+    with open(full_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=ranked[0].keys())
         writer.writeheader()
         writer.writerows(ranked)
 
-    print(f"\nResults saved to {path}")
+    print(f"\nResults saved to {full_path}")
 
 
 def main():

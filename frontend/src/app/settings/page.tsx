@@ -110,7 +110,7 @@ export default function SettingsPage() {
   if (!user) return null;
 
   const inputClass =
-    "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
+    "w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -118,23 +118,23 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
         {message && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-lg">
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-lg text-sm">
             {message}
           </div>
         )}
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-800 pb-2">
+        <div className="p-5 rounded-xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border border-blue-500/20 space-y-4">
+          <h2 className="text-lg font-semibold text-blue-700 dark:text-blue-400">
             Profile
           </h2>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
             <input
               id="email"
               type="email"
@@ -146,7 +146,7 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="first_name" className="block text-sm font-medium mb-1">First Name</label>
+              <label htmlFor="first_name" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">First Name</label>
               <input
                 id="first_name"
                 type="text"
@@ -156,7 +156,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label htmlFor="last_name" className="block text-sm font-medium mb-1">Last Name</label>
+              <label htmlFor="last_name" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Last Name</label>
               <input
                 id="last_name"
                 type="text"
@@ -168,7 +168,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label htmlFor="username" className="block text-sm font-medium mb-1">Username</label>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Username</label>
             <input
               id="username"
               type="text"
@@ -179,16 +179,20 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-800 pb-2">
+        <div className="p-5 rounded-xl bg-gradient-to-br from-yellow-500/5 to-orange-500/5 border border-yellow-500/20 space-y-4">
+          <h2 className="text-lg font-semibold text-yellow-700 dark:text-yellow-400">
             Binance API Keys
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Current key: {user.binance_api_key || "Not configured"}
+            Current key: {user.binance_api_key ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Configured</span>
+            ) : (
+              <span className="text-gray-400">Not configured</span>
+            )}
           </p>
 
           <div>
-            <label htmlFor="binance_api_key" className="block text-sm font-medium mb-1">
+            <label htmlFor="binance_api_key" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
               API Key
             </label>
             <input
@@ -202,7 +206,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label htmlFor="binance_api_secret" className="block text-sm font-medium mb-1">
+            <label htmlFor="binance_api_secret" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
               API Secret
             </label>
             <input
@@ -220,7 +224,7 @@ export default function SettingsPage() {
               type="button"
               onClick={handleVerifyBinance}
               disabled={verifying}
-              className="w-full py-2 px-4 border border-gray-300 dark:border-gray-700 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 px-4 border border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-400 font-medium rounded-lg hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {verifying ? "Verifying..." : "Verify Binance Keys"}
             </button>
@@ -230,7 +234,7 @@ export default function SettingsPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25"
         >
           {saving ? "Saving..." : "Save Settings"}
         </button>

@@ -127,7 +127,7 @@ export default function BotsPage() {
   }
 
   const inputClass =
-    "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
+    "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -138,7 +138,7 @@ export default function BotsPage() {
             setShowForm(!showForm);
             setError("");
           }}
-          className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition shadow-lg shadow-emerald-500/25"
         >
           {showForm ? "Cancel" : "+ New Bot"}
         </button>
@@ -147,7 +147,7 @@ export default function BotsPage() {
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="mb-8 p-6 border border-gray-200 dark:border-gray-800 rounded-xl space-y-4"
+          className="mb-8 p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-800 space-y-4"
         >
           <h2 className="text-lg font-semibold">Create a new bot</h2>
 
@@ -318,7 +318,7 @@ export default function BotsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25"
           >
             {saving ? "Creating..." : "Create Bot"}
           </button>
@@ -332,7 +332,7 @@ export default function BotsPage() {
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+            className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition shadow-lg shadow-emerald-500/25"
           >
             Create your first bot
           </button>
@@ -405,7 +405,7 @@ export default function BotsPage() {
           {/* Desktop: table */}
           <div className="hidden sm:block border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/30">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Symbol</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Amount</th>

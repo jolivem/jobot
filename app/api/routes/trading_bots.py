@@ -150,7 +150,7 @@ def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)
         return []
 
     trade_repo = TradeRepository(db)
-    all_trades = trade_repo.list_by_bots([b.id for b in bots])
+    all_trades = trade_repo.list_by_bots([b.id for b in bots], limit=None)
     all_trades.sort(key=lambda t: t.created_at)
 
     # Build buys_by_id and match sells to buys (same logic as stats)
@@ -158,8 +158,8 @@ def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)
     buy_queue = [t for t in all_trades if t.trade_type == "buy"]
     matched_buy_ids: set = set()
 
-    points = []
-    cumulative = 0.0
+    # Aggregate realized profit per day
+    daily_profit: dict[str, float] = {}
 
     for t in all_trades:
         if t.trade_type != "sell":
@@ -182,13 +182,14 @@ def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)
         buy_fee = buy.price * buy.quantity * settings.FEE_PCT
         sell_fee = t.price * t.quantity * settings.FEE_PCT
         profit = (t.price - buy.price) * t.quantity - buy_fee - sell_fee
-        cumulative += profit
-        points.append({
-            "time": int(t.created_at.timestamp()),
-            "value": round(cumulative, 4),
-        })
 
-    return points
+        day_key = t.created_at.strftime("%Y-%m-%d")
+        daily_profit[day_key] = daily_profit.get(day_key, 0.0) + profit
+
+    return [
+        {"time": day, "value": round(value, 4)}
+        for day, value in sorted(daily_profit.items())
+    ]
 
 
 @router.get("/{bot_id}", response_model=TradingBotRead)

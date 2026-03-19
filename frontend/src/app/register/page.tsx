@@ -42,7 +42,7 @@ export default function RegisterPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="max-w-md w-full mx-auto px-4">
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 text-center">
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6 text-center">
             <div className="text-4xl mb-4">&#9993;</div>
             <h2 className="text-xl font-semibold mb-2">Check your email</h2>
             <p className="text-gray-600 dark:text-gray-400">
@@ -51,7 +51,7 @@ export default function RegisterPage() {
             </p>
             <Link
               href="/login"
-              className="inline-block mt-6 text-blue-600 hover:text-blue-700"
+              className="inline-block mt-6 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium"
             >
               Go to Login
             </Link>
@@ -64,20 +64,18 @@ export default function RegisterPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
       <div className="max-w-md w-full mx-auto px-4">
-        <h1 className="text-3xl font-bold text-center mb-8">Create Account</h1>
+        <h1 className="text-3xl font-bold text-center mb-2">Create Account</h1>
+        <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Start trading in minutes</p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5 p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/30">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
 
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium mb-2"
-            >
+            <label htmlFor="email" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               Email
             </label>
             <input
@@ -86,16 +84,13 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium mb-2"
-            >
+            <label htmlFor="password" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               Password
             </label>
             <input
@@ -104,16 +99,13 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               placeholder="At least 8 characters"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium mb-2"
-            >
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               Confirm Password
             </label>
             <input
@@ -122,7 +114,7 @@ export default function RegisterPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               placeholder="Repeat your password"
             />
           </div>
@@ -130,7 +122,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25"
           >
             {loading ? "Creating account..." : "Sign Up"}
           </button>
@@ -138,7 +130,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-gray-600 dark:text-gray-400">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:text-blue-700">
+          <Link href="/login" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium">
             Login
           </Link>
         </p>
