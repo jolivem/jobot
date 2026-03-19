@@ -289,7 +289,7 @@ export async function fetchBotStats(): Promise<BotStats[]> {
 }
 
 export interface ProfitPoint {
-  time: number;
+  time: string;
   value: number;
 }
 

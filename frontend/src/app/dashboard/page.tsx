@@ -18,6 +18,7 @@ import {
   HistogramSeries,
   ColorType,
   type IChartApi,
+  type UTCTimestamp,
 } from "lightweight-charts";
 
 export default function DashboardPage() {
@@ -117,7 +118,7 @@ export default function DashboardPage() {
     });
 
     const data = profitData.map((p) => ({
-      time: p.time,
+      time: p.time as unknown as UTCTimestamp,
       value: p.value,
       color: p.value >= 0 ? "#22c55e" : "#ef4444",
     }));
