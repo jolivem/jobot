@@ -364,13 +364,13 @@ class TestMultiplePositions:
         assert len(decisions) == 0
 
     def test_lowest_price_reset_after_first_buy(self):
-        """lowest_price should be None after the first buy (no positions before)."""
+        """lowest_price should be set to buy price after the first buy."""
         bot = make_bot()
         state = empty_state()
 
         # First buy
         _, state = decide_trade(bot, 150.0, state, None)
-        assert state["lowest_price"] is None
+        assert state["lowest_price"] == 150.0
 
         # Price drops, lowest_price tracks
         _, state = decide_trade(bot, 148.0, state, 150.0)

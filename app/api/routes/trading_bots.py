@@ -77,7 +77,6 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
         matched_buy_ids = set()
         realized_profit = 0.0
         monthly_realized_profit = 0.0
-        monthly_buy_cost = 0.0
 
         # Match each sell to its buy: use matched_buy_trade_id when valid, FIFO fallback otherwise
         for t in trades:
@@ -108,7 +107,6 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
             realized_profit += profit
             if t.created_at >= month_start:
                 monthly_realized_profit += profit
-                monthly_buy_cost += buy.price * buy.quantity
 
         # Open positions = buys not matched to any sell
         open_buys = [t for t in trades if t.trade_type == "buy" and t.id not in matched_buy_ids]
@@ -131,7 +129,7 @@ def bot_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
             symbol=bot.symbol,
             realized_profit=round(realized_profit, 6),
             monthly_realized_profit=round(monthly_realized_profit, 6),
-            monthly_buy_cost=round(monthly_buy_cost, 6),
+            monthly_buy_cost=bot.total_amount,
             open_positions_count=len(open_buys),
             open_positions_cost=round(open_cost, 6),
             open_positions_qty=round(open_qty, 6),

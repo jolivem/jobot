@@ -73,13 +73,16 @@ def decide_trade(
             })
             # Grid levels are pre-computed between max_price and min_price
             grid_prices = compute_grid(bot.max_price, bot.min_price, bot.grid_levels)
-            # Find first grid level below the buy price
+            step = (bot.max_price - bot.min_price) / bot.grid_levels if bot.grid_levels > 0 else 0
+            # Find first grid level meaningfully below the buy price
+            # (skip levels within 10% of a step to avoid immediate re-buy)
+            min_target = current_price - step * 0.1
             next_grid_index = len(grid_prices)
             for i, gp in enumerate(grid_prices):
-                if gp < current_price:
+                if gp < min_target:
                     next_grid_index = i
                     break
-            lowest_price = None
+            lowest_price = current_price
             logger.info(
                 f"Bot {bot.id}: BUY @ {current_price:.8f} "
                 f"(qty: {qty:.6f}, positions: {len(positions)}, "
@@ -137,13 +140,17 @@ def decide_trade(
         return decisions, state
 
     # === Check grid buy ===
+    last_buy_entry = positions[-1]["entry"] if positions else None
+    step = (bot.max_price - bot.min_price) / bot.grid_levels if bot.grid_levels > 0 else 0
     if (
         previous_price is not None
         and next_grid_index < len(grid_prices)
         and current_price <= bot.max_price
     ):
         target = grid_prices[next_grid_index]
-        if current_price <= target:
+        # Price must be at or below target AND meaningfully below last buy (10% of step)
+        min_drop = last_buy_entry - step * 0.1 if last_buy_entry else target
+        if current_price <= target and current_price <= min_drop:
             # Price has reached the grid level, check for pullback confirmation
             pullback_price = lowest_price * (1.0 + buy_pullback_pct)
             if current_price < previous_price and current_price >= pullback_price:
