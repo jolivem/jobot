@@ -148,41 +148,41 @@ def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)
         return []
 
     trade_repo = TradeRepository(db)
-    all_trades = trade_repo.list_by_bots([b.id for b in bots], limit=None)
-    all_trades.sort(key=lambda t: t.created_at)
-
-    # Build buys_by_id and match sells to buys (same logic as stats)
-    buys_by_id = {t.id: t for t in all_trades if t.trade_type == "buy"}
-    buy_queue = [t for t in all_trades if t.trade_type == "buy"]
-    matched_buy_ids: set = set()
-
-    # Aggregate realized profit per day
     daily_profit: dict[str, float] = {}
 
-    for t in all_trades:
-        if t.trade_type != "sell":
-            continue
+    # Match sells to buys PER BOT (not across bots)
+    for bot in bots:
+        trades = trade_repo.list_by_bot(bot.id)
+        trades.sort(key=lambda t: t.created_at)
 
-        buy = None
-        if t.matched_buy_trade_id and t.matched_buy_trade_id in buys_by_id:
-            candidate = buys_by_id[t.matched_buy_trade_id]
-            if candidate.id not in matched_buy_ids:
-                buy = candidate
-        if buy is None:
-            for b in buy_queue:
-                if b.id not in matched_buy_ids:
-                    buy = b
-                    break
-        if buy is None:
-            continue
+        buys_by_id = {t.id: t for t in trades if t.trade_type == "buy"}
+        buy_queue = [t for t in trades if t.trade_type == "buy"]
+        matched_buy_ids: set = set()
 
-        matched_buy_ids.add(buy.id)
-        buy_fee = buy.price * buy.quantity * settings.FEE_PCT
-        sell_fee = t.price * t.quantity * settings.FEE_PCT
-        profit = (t.price - buy.price) * t.quantity - buy_fee - sell_fee
+        for t in trades:
+            if t.trade_type != "sell":
+                continue
 
-        day_key = t.created_at.strftime("%Y-%m-%d")
-        daily_profit[day_key] = daily_profit.get(day_key, 0.0) + profit
+            buy = None
+            if t.matched_buy_trade_id and t.matched_buy_trade_id in buys_by_id:
+                candidate = buys_by_id[t.matched_buy_trade_id]
+                if candidate.id not in matched_buy_ids:
+                    buy = candidate
+            if buy is None:
+                for b in buy_queue:
+                    if b.id not in matched_buy_ids:
+                        buy = b
+                        break
+            if buy is None:
+                continue
+
+            matched_buy_ids.add(buy.id)
+            buy_fee = buy.price * buy.quantity * settings.FEE_PCT
+            sell_fee = t.price * t.quantity * settings.FEE_PCT
+            profit = (t.price - buy.price) * t.quantity - buy_fee - sell_fee
+
+            day_key = t.created_at.strftime("%Y-%m-%d")
+            daily_profit[day_key] = daily_profit.get(day_key, 0.0) + profit
 
     return [
         {"time": day, "value": round(value, 4)}

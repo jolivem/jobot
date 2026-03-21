@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [convertError, setConvertError] = useState<string | null>(null);
 
   const [profitData, setProfitData] = useState<ProfitPoint[]>([]);
+  const [profitRange, setProfitRange] = useState<"1m" | "6m" | "all">("all");
   const [stats, setStats] = useState<BotStats[]>([]);
   const [bots, setBots] = useState<TradingBot[]>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -85,12 +86,24 @@ export default function DashboardPage() {
   const bestDay = profitData.length
     ? Math.max(...profitData.map((p) => p.value))
     : 0;
+  const today = new Date().toISOString().slice(0, 10);
   const todayProfit =
-    profitData.length > 0 ? profitData[profitData.length - 1]?.value ?? 0 : 0;
+    profitData.find((p) => p.time === today)?.value ?? 0;
+
+  // Filter profit data by selected range
+  const filteredProfitData = (() => {
+    if (profitRange === "all") return profitData;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (profitRange === "1m") cutoff.setMonth(cutoff.getMonth() - 1);
+    else cutoff.setMonth(cutoff.getMonth() - 6);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return profitData.filter((p) => p.time >= cutoffStr);
+  })();
 
   // Render chart
   useEffect(() => {
-    if (!chartContainerRef.current || profitData.length === 0) return;
+    if (!chartContainerRef.current || filteredProfitData.length === 0) return;
 
     const isDark = document.documentElement.classList.contains("dark");
     const chart = createChart(chartContainerRef.current, {
@@ -117,7 +130,7 @@ export default function DashboardPage() {
       priceFormat: { type: "price", precision: 2, minMove: 0.01 },
     });
 
-    const data = profitData.map((p) => ({
+    const data = filteredProfitData.map((p) => ({
       time: p.time as unknown as UTCTimestamp,
       value: p.value,
       color: p.value >= 0 ? "#22c55e" : "#ef4444",
@@ -139,7 +152,7 @@ export default function DashboardPage() {
       chart.remove();
       chartRef.current = null;
     };
-  }, [profitData]);
+  }, [filteredProfitData]);
 
   const handleConvert = async () => {
     const amount = parseFloat(convertAmount);
@@ -237,8 +250,25 @@ export default function DashboardPage() {
 
       {/* Daily Profit Chart */}
       <div className="mb-8 p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Daily Profit</h2>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Daily Profit</h2>
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs font-medium">
+              {(["1m", "6m", "all"] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setProfitRange(range)}
+                  className={`px-3 py-1.5 transition ${
+                    profitRange === range
+                      ? "bg-emerald-500 text-white"
+                      : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {range === "1m" ? "1M" : range === "6m" ? "6M" : "All"}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
@@ -267,7 +297,7 @@ export default function DashboardPage() {
             </span>
           </div>
         </div>
-        {profitData.length > 0 ? (
+        {filteredProfitData.length > 0 ? (
           <div ref={chartContainerRef} />
         ) : (
           <p className="text-gray-400 text-sm py-10 text-center">
