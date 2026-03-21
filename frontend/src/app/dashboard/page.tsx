@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchBnbBalance,
+  fetchPrice,
   convertToBnb,
   fetchProfitHistory,
   fetchBotStats,
@@ -27,6 +28,7 @@ export default function DashboardPage() {
 
   const [bnbFree, setBnbFree] = useState<number | null>(null);
   const [bnbLocked, setBnbLocked] = useState<number | null>(null);
+  const [bnbPrice, setBnbPrice] = useState<number | null>(null);
   const [bnbLoading, setBnbLoading] = useState(false);
 
   const [convertAmount, setConvertAmount] = useState("");
@@ -48,10 +50,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user?.binance_api_key) {
       setBnbLoading(true);
-      fetchBnbBalance()
-        .then((data) => {
+      Promise.all([fetchBnbBalance(), fetchPrice("BNBUSDC")])
+        .then(([data, price]) => {
           setBnbFree(data.free);
           setBnbLocked(data.locked);
+          setBnbPrice(price);
         })
         .catch(() => {
           setBnbFree(null);
@@ -353,6 +356,11 @@ export default function DashboardPage() {
                 <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                   {bnbFree.toFixed(6)} BNB
                 </p>
+                {bnbPrice !== null && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    ~ {(bnbFree * bnbPrice).toFixed(2)} $
+                  </p>
+                )}
                 {(bnbLocked ?? 0) > 0 && (
                   <p className="text-sm text-gray-500 mt-1">
                     + {bnbLocked?.toFixed(6)} locked

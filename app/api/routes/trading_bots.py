@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -183,6 +183,18 @@ def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)
 
             day_key = t.created_at.strftime("%Y-%m-%d")
             daily_profit[day_key] = daily_profit.get(day_key, 0.0) + profit
+
+    # Fill gaps with 0 so every day has a bar
+    if daily_profit:
+        sorted_days = sorted(daily_profit.keys())
+        start = datetime.strptime(sorted_days[0], "%Y-%m-%d").date()
+        end = datetime.strptime(sorted_days[-1], "%Y-%m-%d").date()
+        day = start
+        while day <= end:
+            key = day.strftime("%Y-%m-%d")
+            if key not in daily_profit:
+                daily_profit[key] = 0.0
+            day += timedelta(days=1)
 
     return [
         {"time": day, "value": round(value, 4)}

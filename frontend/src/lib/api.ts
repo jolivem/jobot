@@ -336,6 +336,12 @@ export async function fetchBnbBalance(): Promise<{ free: number; locked: number 
   return handleResponse<{ free: number; locked: number }>(response);
 }
 
+export async function fetchPrice(symbol: string): Promise<number | null> {
+  const response = await authFetch(`${API_URL}/prices/${symbol}`);
+  const data = await handleResponse<{ symbol: string; price: number | null }>(response);
+  return data.price;
+}
+
 export async function convertToBnb(amount: number): Promise<{ status: string; bnb_bought: number; usdc_spent: number }> {
   const response = await authFetch(`${API_URL}/account/convert-to-bnb`, {
     method: 'POST',
