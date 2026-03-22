@@ -316,11 +316,37 @@ def emergency_sell(
     if settings.BINANCE_LIVE_TRADING and user.binance_api_key and user.binance_api_secret:
         binance = BinanceTradeService(decrypt(user.binance_api_key), decrypt(user.binance_api_secret))
         total_qty = sum(b.quantity for b in buys)
+        logger.info(
+            f"Emergency sell bot {bot_id} ({bot.symbol}): "
+            f"{len(buys)} open positions, total_qty={total_qty}, "
+            f"current_price={current_price}"
+        )
         try:
-            binance.place_order(bot.symbol, "SELL", total_qty)
+            result = binance.place_order(bot.symbol, "SELL", total_qty)
+            logger.info(f"Emergency sell bot {bot_id}: Binance response: {result}")
         except Exception as e:
-            logger.error(f"Emergency sell Binance order failed for bot {bot_id}: {e}")
-            raise HTTPException(status_code=502, detail=f"Binance order failed: {e}")
+            # Extract Binance error message if available
+            error_msg = str(e)
+            if hasattr(e, "response"):
+                try:
+                    body = e.response.json()
+                    error_msg = body.get("msg", error_msg)
+                    logger.error(
+                        f"Emergency sell bot {bot_id} ({bot.symbol}): "
+                        f"Binance error code={body.get('code')}, msg={body.get('msg')}, "
+                        f"qty_sent={total_qty}"
+                    )
+                except Exception:
+                    logger.error(
+                        f"Emergency sell bot {bot_id} ({bot.symbol}): "
+                        f"Binance raw error: {e}, qty_sent={total_qty}"
+                    )
+            else:
+                logger.error(
+                    f"Emergency sell bot {bot_id} ({bot.symbol}): "
+                    f"error: {e}, qty_sent={total_qty}"
+                )
+            raise HTTPException(status_code=502, detail=f"Binance order failed: {error_msg}")
 
     # Record sell trades in DB
     sold = []

@@ -87,19 +87,14 @@ def fetch_klines_by_day(
     symbol: str,
     interval: str,
     day: "date",
-) -> list[dict]:
-    """Fetch all klines for a single UTC day.
+) -> str:
+    """Fetch all klines for a single UTC day as raw CSV text.
 
     Uses Binance Vision for 1s interval (not available via REST API),
     and the REST API for all other intervals.
 
-    Args:
-        symbol: Trading pair (e.g., "BTCUSDC").
-        interval: Candle interval (e.g., "1s", "1m", "1h").
-        day: The date to fetch (full UTC day).
-
     Returns:
-        List of kline dicts for that day, sorted chronologically.
+        Raw CSV text (one line per candle), or empty string on failure.
     """
     if interval == "1s":
         return fetch_klines_vision_day(symbol, interval, day)
@@ -108,22 +103,27 @@ def fetch_klines_by_day(
     start_ms = int(start_dt.timestamp() * 1000)
     end_ms = start_ms + 86_400_000 - 1  # end of day (23:59:59.999)
 
-    return fetch_klines_range(symbol, interval, start_ms, end_ms)
+    klines = fetch_klines_range(symbol, interval, start_ms, end_ms)
+    # Convert dicts to CSV lines for storage
+    lines = []
+    for k in klines:
+        lines.append(f"{k['time']},{k['open']},{k['high']},{k['low']},{k['close']},{k['volume']},0,0,0,0,{k['buy_quote_volume']}")
+    return "\n".join(lines)
 
 
 def fetch_klines_vision_day(
     symbol: str,
     interval: str,
     day: "date",
-) -> list[dict]:
+) -> str:
     """Fetch klines for a single day from Binance Vision archives.
 
-    Downloads the daily ZIP/CSV file. No rate limits (static file hosting).
+    Downloads the daily ZIP/CSV file and returns the raw CSV text.
+    No rate limits (static file hosting).
     """
     symbol = symbol.upper()
     date_str = day.strftime("%Y-%m-%d")
     url = f"{VISION_BASE_URL}/{symbol}/{interval}/{symbol}-{interval}-{date_str}.zip"
-    klines: list[dict] = []
 
     try:
         resp = urlopen(url, timeout=60)
@@ -132,28 +132,7 @@ def fetch_klines_vision_day(
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
             csv_name = zf.namelist()[0]
             with zf.open(csv_name) as f:
-                for line in f:
-                    parts = line.decode().strip().split(",")
-                    if len(parts) < 6:
-                        continue
-                    try:
-                        timestamp = int(parts[0])
-                    except ValueError:
-                        continue
-
-                    # From Jan 2025: timestamps are in microseconds
-                    if timestamp > 1e15:
-                        timestamp = timestamp // 1000
-
-                    klines.append({
-                        "time": timestamp,
-                        "open": float(parts[1]),
-                        "high": float(parts[2]),
-                        "low": float(parts[3]),
-                        "close": float(parts[4]),
-                        "volume": float(parts[5]),
-                        "buy_quote_volume": float(parts[10]) if len(parts) > 10 else 0.0,
-                    })
+                return f.read().decode()
 
     except HTTPError as e:
         if e.code == 404:
@@ -163,7 +142,7 @@ def fetch_klines_vision_day(
     except (zipfile.BadZipFile, Exception) as e:
         logger.warning(f"Error processing {symbol} {date_str}: {e}")
 
-    return klines
+    return ""
 
 
 def fetch_klines_range(

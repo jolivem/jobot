@@ -4,7 +4,7 @@
 Scans all Binance USDC pairs, runs grid parameter optimization on each,
 and outputs the results ranked by P&L%. No frontend, Redis, or DB needed.
 
-Klines are cached locally as JSON files (one file per day/symbol/interval).
+Klines are cached locally as CSV files (one file per day/symbol/interval).
 Only missing days are fetched from Binance. The current day is never included
 (screening operates on complete days only).
 
