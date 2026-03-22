@@ -197,9 +197,13 @@ export default function BotDetailPage() {
     stats && unrealized !== null
       ? stats.realized_profit + unrealized
       : null;
+  const monthlyPnl =
+    stats && unrealized !== null
+      ? stats.monthly_realized_profit + unrealized
+      : stats ? stats.monthly_realized_profit : null;
   const monthlyPct =
-    stats && stats.monthly_buy_cost > 0
-      ? (stats.monthly_realized_profit / stats.monthly_buy_cost) * 100
+    monthlyPnl !== null && stats && stats.monthly_buy_cost > 0
+      ? (monthlyPnl / stats.monthly_buy_cost) * 100
       : null;
 
   const hasOpenPositions = stats ? stats.open_positions_count > 0 : false;

@@ -351,9 +351,13 @@ export default function BotsPage() {
                 s && unrealized !== null
                   ? s.realized_profit + unrealized
                   : s ? s.realized_profit : null;
+              const monthlyPnl =
+                s && unrealized !== null
+                  ? s.monthly_realized_profit + unrealized
+                  : s ? s.monthly_realized_profit : null;
               const monthlyPct =
-                s && s.monthly_buy_cost > 0
-                  ? (s.monthly_realized_profit / s.monthly_buy_cost) * 100
+                monthlyPnl !== null && s && s.monthly_buy_cost > 0
+                  ? (monthlyPnl / s.monthly_buy_cost) * 100
                   : null;
 
               return (
@@ -426,9 +430,13 @@ export default function BotsPage() {
                     s && unrealized !== null
                       ? s.realized_profit + unrealized
                       : s ? s.realized_profit : null;
+                  const monthlyPnl =
+                    s && unrealized !== null
+                      ? s.monthly_realized_profit + unrealized
+                      : s ? s.monthly_realized_profit : null;
                   const monthlyPct =
-                    s && s.monthly_buy_cost > 0
-                      ? (s.monthly_realized_profit / s.monthly_buy_cost) * 100
+                    monthlyPnl !== null && s && s.monthly_buy_cost > 0
+                      ? (monthlyPnl / s.monthly_buy_cost) * 100
                       : null;
 
                   return (
