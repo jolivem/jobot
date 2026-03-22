@@ -7,13 +7,14 @@ class TradeRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, trading_bot_id: int, trade_type: str, price: float, quantity: float, matched_buy_trade_id: int | None = None) -> Trade:
+    def create(self, trading_bot_id: int, trade_type: str, price: float, quantity: float, matched_buy_trade_id: int | None = None, grid_level: int | None = None) -> Trade:
         row = Trade(
             trading_bot_id=trading_bot_id,
             trade_type=trade_type,
             price=price,
             quantity=quantity,
             matched_buy_trade_id=matched_buy_trade_id,
+            grid_level=grid_level,
         )
         self.db.add(row)
         self.db.commit()

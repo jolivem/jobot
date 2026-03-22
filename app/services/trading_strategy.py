@@ -64,12 +64,14 @@ def decide_trade(
                 "side": "buy",
                 "quantity": qty,
                 "entry_price": current_price,
+                "grid_level": -1,
             })
             positions.append({
                 "qty": qty,
                 "entry": current_price,
                 "highest": current_price,
                 "fee": qty * current_price * fee_pct,
+                "grid_level": -1,  # initial buy, not a grid level
             })
             # Grid levels are pre-computed between max_price and min_price
             grid_prices = compute_grid(bot.max_price, bot.min_price, bot.grid_levels)
@@ -140,31 +142,33 @@ def decide_trade(
         return decisions, state
 
     # === Check grid buy ===
-    last_buy_entry = positions[-1]["entry"] if positions else None
-    step = (bot.max_price - bot.min_price) / bot.grid_levels if bot.grid_levels > 0 else 0
+    occupied_levels = {pos.get("grid_level") for pos in positions}
     if (
         previous_price is not None
         and next_grid_index < len(grid_prices)
+        and len(positions) < bot.grid_levels
         and current_price <= bot.max_price
+        and next_grid_index not in occupied_levels
     ):
         target = grid_prices[next_grid_index]
-        # Price must be at or below target AND meaningfully below last buy (10% of step)
-        min_drop = last_buy_entry - step * 0.1 if last_buy_entry else target
-        if current_price <= target and current_price <= min_drop:
+        if current_price <= target:
             # Price has reached the grid level, check for pullback confirmation
             pullback_price = lowest_price * (1.0 + buy_pullback_pct)
             if current_price < previous_price and current_price >= pullback_price:
                 qty = bot.total_amount / bot.grid_levels / current_price
+                grid_lvl = next_grid_index
                 decisions.append({
                     "side": "buy",
                     "quantity": qty,
                     "entry_price": current_price,
+                    "grid_level": grid_lvl,
                 })
                 positions.append({
                     "qty": qty,
                     "entry": current_price,
                     "highest": current_price,
                     "fee": qty * current_price * fee_pct,
+                    "grid_level": grid_lvl,
                 })
                 next_grid_index += 1
                 lowest_price = current_price
@@ -205,6 +209,7 @@ def reconstruct_state_from_trades(bot: TradingBot, trades: list) -> dict:
                 "entry": t.price,
                 "highest": t.price,  # conservative: will catch up on next ticks
                 "fee": t.quantity * t.price * fee_pct,
+                "grid_level": getattr(t, "grid_level", None),
             })
         elif t.trade_type == "sell" and open_positions:
             open_positions.pop(0)
@@ -220,14 +225,23 @@ def reconstruct_state_from_trades(bot: TradingBot, trades: list) -> dict:
     # Grid is always computed from max_price and min_price
     first_buy_price = open_positions[0]["entry"]
     grid_prices = compute_grid(bot.max_price, bot.min_price, bot.grid_levels)
-    # Find first grid level below first buy price
+    step = (bot.max_price - bot.min_price) / bot.grid_levels if bot.grid_levels > 0 else 0
+    # Find first grid level below first buy price (with 10% step margin)
+    min_target = first_buy_price - step * 0.1
     start_index = len(grid_prices)
     for i, gp in enumerate(grid_prices):
-        if gp < first_buy_price:
+        if gp < min_target:
             start_index = i
             break
     # next_grid_index = start_index + number of grid buys made
     next_grid_index = start_index + (len(open_positions) - 1)
+
+    # Assign grid_level to positions that don't have one (legacy trades without grid_level in DB)
+    if open_positions[0]["grid_level"] is None:
+        open_positions[0]["grid_level"] = -1
+    for j in range(1, len(open_positions)):
+        if open_positions[j]["grid_level"] is None:
+            open_positions[j]["grid_level"] = start_index + (j - 1)
 
     # Conservative lowest_price: minimum entry among open positions
     lowest_price = min(p["entry"] for p in open_positions)

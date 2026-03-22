@@ -504,6 +504,185 @@ class TestFullScenario:
         assert len(buys) == 1  # only initial buy
         assert len(state["positions"]) == 1
 
+    def test_no_double_buy_at_grid_level(self):
+        """When price crosses a grid level, only ONE buy should trigger, not two."""
+        bot = make_bot(
+            max_price=0.085,
+            min_price=0.070,
+            grid_levels=10,
+            sell_percentage=2.0,
+            total_amount=100.0,
+        )
+        # step = (0.085-0.070)/10 = 0.0015 (~2% of 0.075)
+        # grid levels: 0.0835, 0.082, 0.0805, 0.079, 0.0775, 0.076, 0.0745, 0.073, 0.0715
+        # First buy at 0.080, next target should be 0.079 or below
+        prices = [
+            0.0800,   # BUY #1 (initial)
+            0.0790,   # drop
+            0.0780,   # drop through grid level
+            0.0770,   # lowest
+            0.0778,   # bounce (+1%)
+            0.0776,   # dip -> BUY #2 (one grid buy)
+            0.0776,   # same price, should NOT buy again
+            0.0774,   # small dip, should NOT buy (too close to #2)
+            0.0773,   # small dip, should NOT buy
+        ]
+        decisions, state = run_prices(bot, prices)
+        buys = [d for d in decisions if d["side"] == "buy"]
+        assert len(buys) == 2, f"Expected 2 buys, got {len(buys)}"
+
+    def test_no_exceed_grid_levels_after_partial_sell_and_reconstruct(self):
+        """After selling some positions and reconstructing state (Redis restart),
+        the bot should never exceed grid_levels open positions."""
+        bot = make_bot(
+            max_price=200.0,
+            min_price=100.0,
+            grid_levels=5,
+            sell_percentage=2.0,
+            total_amount=1000.0,
+        )
+        # step=20, grid=[180,160,140,120]
+        # Phase 1: buy 3 positions
+        prices = [
+            150.0,   # BUY #1
+            142.0, 139.0, 139.5, 139.3,   # BUY #2 at 140
+            122.0, 119.0, 119.5, 119.3,   # BUY #3 at 120
+        ]
+        decisions, state = run_prices(bot, prices)
+        buys = [d for d in decisions if d["side"] == "buy"]
+        assert len(buys) == 3
+        assert len(state["positions"]) == 3
+
+        # Simulate reconstruction (Redis restart) with 3 open positions
+        # This resets next_grid_index based on open positions count
+        fake_trades = [
+            SimpleNamespace(trade_type="buy", price=150.0, quantity=1.0, created_at=1),
+            SimpleNamespace(trade_type="buy", price=139.3, quantity=1.0, created_at=2),
+            SimpleNamespace(trade_type="buy", price=119.3, quantity=1.0, created_at=3),
+        ]
+        state = reconstruct_state_from_trades(bot, fake_trades)
+        assert len(state["positions"]) == 3
+
+        # Phase 2: continue trading from reconstructed state — price drops further
+        previous_price = 119.3
+        more_buys = 0
+        for p in [115.0, 110.0, 105.0, 103.0, 103.5, 103.3, 101.0, 100.5, 100.8, 100.6]:
+            d, state = decide_trade(bot, p, state, previous_price)
+            more_buys += sum(1 for x in d if x["side"] == "buy")
+            previous_price = p
+
+        total_positions = len(state["positions"])
+        assert total_positions <= 5, f"Expected at most 5 positions, got {total_positions}"
+
+    def test_grid_level_prevents_double_buy(self):
+        """A grid level already occupied by an open position cannot trigger a second buy."""
+        bot = make_bot(
+            max_price=200.0,
+            min_price=100.0,
+            grid_levels=5,
+            sell_percentage=2.0,
+            total_amount=1000.0,
+        )
+        # step=20, grid=[180,160,140,120]
+        # Buy initial, then grid buy at level 140
+        prices = [
+            150.0,   # BUY initial (grid_level=-1)
+            142.0, 139.0, 139.5, 139.3,   # BUY at grid level (grid_level=2)
+        ]
+        decisions, state = run_prices(bot, prices)
+        buys = [d for d in decisions if d["side"] == "buy"]
+        assert len(buys) == 2
+
+        # Verify grid_level is stored
+        assert state["positions"][0]["grid_level"] == -1
+        assert state["positions"][1]["grid_level"] == 2
+
+        # Price bounces back to 140 level then drops again — should NOT buy at same level
+        previous = 139.3
+        for p in [141.0, 140.5, 139.0, 138.5, 139.0, 138.8]:
+            d, state = decide_trade(bot, p, state, previous)
+            extra_buys = [x for x in d if x["side"] == "buy"]
+            assert len(extra_buys) == 0, f"Should not double-buy at same grid level, price={p}"
+            previous = p
+
+        assert len(state["positions"]) == 2
+
+    def test_grid_level_freed_after_sell(self):
+        """After selling a position, its grid level is freed and can be reused."""
+        bot = make_bot(
+            max_price=200.0,
+            min_price=100.0,
+            grid_levels=5,
+            sell_percentage=2.0,
+            total_amount=1000.0,
+        )
+        # Buy initial + grid buy at 140
+        prices = [
+            150.0,   # BUY initial
+            142.0, 139.0, 139.5, 139.3,  # BUY at grid ~140
+            # Price rises → sell the grid position (#2, LIFO in sell check)
+            145.0,  # gain from 139.3 = 4.1% > 2%
+            144.5,  # pullback → SELL
+        ]
+        decisions, state = run_prices(bot, prices)
+        buys = [d for d in decisions if d["side"] == "buy"]
+        sells = [d for d in decisions if d["side"] == "sell"]
+        assert len(buys) == 2
+        assert len(sells) >= 1
+        # Grid level 2 is now freed (position sold)
+        occupied = {p.get("grid_level") for p in state["positions"]}
+        assert 2 not in occupied
+
+    def test_hard_limit_after_reconstruct_with_many_positions(self):
+        """Even if reconstruction leaves next_grid_index allowing more buys,
+        the hard limit len(positions) < grid_levels must prevent excess."""
+        bot = make_bot(
+            max_price=200.0,
+            min_price=100.0,
+            grid_levels=3,
+            sell_percentage=5.0,
+            total_amount=1000.0,
+        )
+        # Manually create a state with 3 positions (= grid_levels) but next_grid_index
+        # still has room (simulating a buggy reconstruction)
+        state = {
+            "positions": [
+                {"qty": 1.0, "entry": 180.0, "highest": 180.0, "fee": 0.1},
+                {"qty": 1.0, "entry": 160.0, "highest": 160.0, "fee": 0.1},
+                {"qty": 1.0, "entry": 140.0, "highest": 140.0, "fee": 0.1},
+            ],
+            "lowest_price": 135.0,
+            "grid_prices": compute_grid(200.0, 100.0, 3),  # [166.67, 133.33]
+            "next_grid_index": 1,  # still has room in grid
+        }
+        # Price drops further — should NOT buy because already at grid_levels positions
+        decisions, state = decide_trade(bot, 130.0, state, 135.0)
+        buys = [d for d in decisions if d["side"] == "buy"]
+        assert len(buys) == 0, f"Should not buy when at grid_levels positions, got {len(buys)}"
+        assert len(state["positions"]) == 3
+
+    def test_max_positions_equals_grid_levels(self):
+        """Never more than grid_levels open positions, even with fast price drops."""
+        bot = make_bot(
+            max_price=0.085,
+            min_price=0.070,
+            grid_levels=10,
+            sell_percentage=2.0,
+            total_amount=100.0,
+        )
+        # Price drops from 0.080 all the way down through all grid levels
+        prices = [0.0800]  # initial buy
+        # Drop tick by tick from 0.080 to 0.070
+        p = 0.0800
+        while p > 0.0700:
+            p -= 0.0001
+            prices.append(round(p, 5))
+
+        decisions, state = run_prices(bot, prices)
+        buys = [d for d in decisions if d["side"] == "buy"]
+        assert len(buys) <= 10, f"Expected at most 10 buys, got {len(buys)}"
+        assert len(state["positions"]) <= 10
+
     def test_grid_levels_1_only_one_buy(self):
         """With grid_levels=1, only one buy per cycle, no grid."""
         bot = make_bot(grid_levels=1, sell_percentage=2.0)

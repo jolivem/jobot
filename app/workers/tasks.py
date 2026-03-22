@@ -185,6 +185,7 @@ def run_trading_bot(self, bot_id: int):
                         price=filled_price,
                         quantity=filled_qty,
                         matched_buy_trade_id=matched_buy_id,
+                        grid_level=decision.get("grid_level"),
                     )
 
                     # Sync state positions with actual Binance fill

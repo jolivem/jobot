@@ -12,4 +12,5 @@ class Trade(Base):
     price: Mapped[float] = mapped_column(Float, nullable=False)
     quantity: Mapped[float] = mapped_column(Float, nullable=False)
     matched_buy_trade_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trades.id"), nullable=True)
+    grid_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), index=True)

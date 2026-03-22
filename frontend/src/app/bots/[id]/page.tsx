@@ -202,6 +202,8 @@ export default function BotDetailPage() {
       ? (stats.monthly_realized_profit / stats.monthly_buy_cost) * 100
       : null;
 
+  const hasOpenPositions = stats ? stats.open_positions_count > 0 : false;
+
   // Grid step between two levels
   const gridStep =
     bot.grid_levels > 0 && bot.max_price > bot.min_price
@@ -376,7 +378,8 @@ export default function BotDetailPage() {
                   onChange={(e) =>
                     setEditFormStr({ ...editFormStr, min_price: e.target.value })
                   }
-                  className={editInputClass}
+                  disabled={hasOpenPositions}
+                  className={`${editInputClass} ${hasOpenPositions ? "opacity-50 cursor-not-allowed" : ""}`}
                 />
               </div>
               <div>
@@ -390,7 +393,8 @@ export default function BotDetailPage() {
                   onChange={(e) =>
                     setEditFormStr({ ...editFormStr, max_price: e.target.value })
                   }
-                  className={editInputClass}
+                  disabled={hasOpenPositions}
+                  className={`${editInputClass} ${hasOpenPositions ? "opacity-50 cursor-not-allowed" : ""}`}
                 />
               </div>
             </div>
@@ -420,7 +424,8 @@ export default function BotDetailPage() {
                   onChange={(e) =>
                     setEditFormStr({ ...editFormStr, grid_levels: e.target.value })
                   }
-                  className={editInputClass}
+                  disabled={hasOpenPositions}
+                  className={`${editInputClass} ${hasOpenPositions ? "opacity-50 cursor-not-allowed" : ""}`}
                 />
               </div>
               <div>
@@ -441,6 +446,11 @@ export default function BotDetailPage() {
                 />
               </div>
             </div>
+            {hasOpenPositions && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Min price, max price and grid levels cannot be changed while positions are open.
+              </p>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={handleEditSave}
@@ -539,7 +549,7 @@ export default function BotDetailPage() {
           </Link>
           <Link
             href={`/bots/${bot.id}/chart`}
-            className="flex-1 text-center px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition"
+            className="flex-1 text-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition shadow-sm"
           >
             Chart
           </Link>
