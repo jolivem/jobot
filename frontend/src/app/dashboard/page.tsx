@@ -8,6 +8,7 @@ import {
   fetchPrice,
   convertToBnb,
   fetchProfitHistory,
+  fetchPnlSnapshots,
   fetchBotStats,
   listBots,
   type ProfitPoint,
@@ -17,6 +18,7 @@ import {
 import {
   createChart,
   HistogramSeries,
+  LineSeries,
   ColorType,
   type IChartApi,
   type UTCTimestamp,
@@ -38,9 +40,12 @@ export default function DashboardPage() {
 
   const [profitData, setProfitData] = useState<ProfitPoint[]>([]);
   const [profitRange, setProfitRange] = useState<"1m" | "6m" | "all">("all");
+  const [pnlData, setPnlData] = useState<ProfitPoint[]>([]);
+  const [pnlRange, setPnlRange] = useState<"24h" | "7d" | "30d">("7d");
   const [stats, setStats] = useState<BotStats[]>([]);
   const [bots, setBots] = useState<TradingBot[]>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const pnlChartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
   useEffect(() => {
@@ -66,11 +71,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (loading || !isAuthenticated) return;
-    Promise.all([fetchProfitHistory(), fetchBotStats(), listBots()])
-      .then(([profit, statsData, botsData]) => {
+    Promise.all([fetchProfitHistory(), fetchBotStats(), listBots(), fetchPnlSnapshots(30)])
+      .then(([profit, statsData, botsData, pnl]) => {
         setProfitData(profit);
         setStats(statsData);
         setBots(botsData);
+        setPnlData(pnl);
       })
       .catch(() => {});
   }, [loading, isAuthenticated]);
@@ -156,6 +162,74 @@ export default function DashboardPage() {
       chartRef.current = null;
     };
   }, [filteredProfitData]);
+
+  // Filter P&L snapshots by selected range
+  const filteredPnlData = (() => {
+    if (pnlData.length === 0) return [];
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (pnlRange === "24h") cutoff.setHours(cutoff.getHours() - 24);
+    else if (pnlRange === "7d") cutoff.setDate(cutoff.getDate() - 7);
+    else cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().slice(0, 16);
+    return pnlData.filter((p) => p.time >= cutoffStr);
+  })();
+
+  // Render P&L snapshots chart
+  useEffect(() => {
+    if (!pnlChartContainerRef.current || filteredPnlData.length === 0) return;
+
+    const isDark = document.documentElement.classList.contains("dark");
+    const chart = createChart(pnlChartContainerRef.current, {
+      width: pnlChartContainerRef.current.clientWidth,
+      height: 300,
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: isDark ? "#9ca3af" : "#6b7280",
+      },
+      grid: {
+        vertLines: { color: isDark ? "#1f2937" : "#e5e7eb" },
+        horzLines: { color: isDark ? "#1f2937" : "#e5e7eb" },
+      },
+      rightPriceScale: {
+        borderColor: isDark ? "#374151" : "#d1d5db",
+      },
+      timeScale: {
+        borderColor: isDark ? "#374151" : "#d1d5db",
+        timeVisible: true,
+      },
+      crosshair: { mode: 0 },
+    });
+
+    const lastValue = filteredPnlData[filteredPnlData.length - 1]?.value ?? 0;
+    const lineColor = lastValue >= 0 ? "#22c55e" : "#ef4444";
+
+    const series = chart.addSeries(LineSeries, {
+      color: lineColor,
+      lineWidth: 2,
+      priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+    });
+
+    const data = filteredPnlData.map((p) => ({
+      time: (new Date(p.time + ":00Z").getTime() / 1000) as unknown as UTCTimestamp,
+      value: p.value,
+    }));
+
+    series.setData(data);
+    chart.timeScale().fitContent();
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (pnlChartContainerRef.current) {
+        chart.applyOptions({ width: pnlChartContainerRef.current.clientWidth });
+      }
+    });
+    resizeObserver.observe(pnlChartContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      chart.remove();
+    };
+  }, [filteredPnlData]);
 
   const handleConvert = async () => {
     const amount = parseFloat(convertAmount);
@@ -305,6 +379,52 @@ export default function DashboardPage() {
         ) : (
           <p className="text-gray-400 text-sm py-10 text-center">
             No trade data yet.
+          </p>
+        )}
+      </div>
+
+      {/* Cumulative P&L Chart */}
+      <div className="mb-8 p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Cumulative P&L</h2>
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs font-medium">
+              {(["24h", "7d", "30d"] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setPnlRange(range)}
+                  className={`px-3 py-1.5 transition ${
+                    pnlRange === range
+                      ? "bg-emerald-500 text-white"
+                      : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+          </div>
+          {filteredPnlData.length > 0 && (
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Latest:{" "}
+              <span
+                className={`font-medium ${
+                  filteredPnlData[filteredPnlData.length - 1].value >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-500"
+                }`}
+              >
+                {filteredPnlData[filteredPnlData.length - 1].value >= 0 ? "+" : ""}
+                {filteredPnlData[filteredPnlData.length - 1].value.toFixed(2)} $
+              </span>
+            </span>
+          )}
+        </div>
+        {filteredPnlData.length > 0 ? (
+          <div ref={pnlChartContainerRef} />
+        ) : (
+          <p className="text-gray-400 text-sm py-10 text-center">
+            No snapshot data yet. Data will appear after the first hourly snapshot.
           </p>
         )}
       </div>

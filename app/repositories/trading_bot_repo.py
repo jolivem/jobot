@@ -76,6 +76,9 @@ class TradingBotRepository:
         self.db.commit()
         return True
 
+    def list_all(self) -> list[TradingBot]:
+        return self.db.query(TradingBot).order_by(TradingBot.id).all()
+
     # Worker usage
     def list_active_symbols(self) -> list[str]:
         """Get distinct active symbols for price caching"""

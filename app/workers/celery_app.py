@@ -16,11 +16,17 @@ celery.conf.beat_schedule = {
         "schedule": 3.0,
         "options": {"queue": "short"},
     },
+    "snapshot-pnl-every-hour": {
+        "task": "app.workers.tasks.snapshot_pnl",
+        "schedule": 3600.0,
+        "options": {"queue": "short"},
+    },
 }
 
 celery.conf.task_routes = {
     "app.workers.tasks.cache_prices": {"queue": "short"},
     "app.workers.tasks.restart_active_bots": {"queue": "short"},
+    "app.workers.tasks.snapshot_pnl": {"queue": "short"},
     "app.workers.tasks.run_trading_bot": {"queue": "bots"},
 }
 

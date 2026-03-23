@@ -382,7 +382,7 @@ export default function BotsPage() {
                       <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Total P&L</p>
                       {totalPnl !== null ? (
                         <span className={`font-medium ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                          {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(4)} $
+                          {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(2)} $
                         </span>
                       ) : <span className="text-gray-400">—</span>}
                     </div>
@@ -455,7 +455,7 @@ export default function BotsPage() {
                       <td className="px-4 py-3 text-right">
                         {totalPnl !== null ? (
                           <span className={`font-medium ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                            {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(4)} $
+                            {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(2)} $
                           </span>
                         ) : <span className="text-gray-400">—</span>}
                       </td>

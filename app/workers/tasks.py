@@ -15,6 +15,60 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@celery.task(name="app.workers.tasks.snapshot_pnl")
+def snapshot_pnl():
+    """Snapshot total P&L for each bot, once per hour."""
+    from datetime import datetime, timezone
+    from app.repositories.pnl_snapshot_repo import PnlSnapshotRepository
+    from app.services.pnl_service import compute_bot_pnl
+
+    db: Session = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        snapshot_at = now.replace(minute=0, second=0, microsecond=0)
+
+        bot_repo = TradingBotRepository(db)
+        trade_repo = TradeRepository(db)
+        snap_repo = PnlSnapshotRepository(db)
+
+        try:
+            cache = RedisCache()
+        except Exception:
+            cache = None
+
+        all_bots = bot_repo.list_all()
+        for bot in all_bots:
+            if snap_repo.exists(bot.id, snapshot_at):
+                continue
+
+            trades = trade_repo.list_by_bot(bot.id)
+            trades.sort(key=lambda t: t.created_at)
+
+            current_price = None
+            if cache:
+                try:
+                    current_price = cache.get_price(bot.symbol)
+                except Exception:
+                    pass
+
+            pnl = compute_bot_pnl(trades, current_price)
+
+            snap_repo.create(
+                user_id=bot.user_id,
+                trading_bot_id=bot.id,
+                realized_pnl=round(pnl["realized_pnl"], 6),
+                unrealized_pnl=round(pnl["unrealized_pnl"], 6),
+                total_pnl=round(pnl["total_pnl"], 6),
+                snapshot_at=snapshot_at,
+            )
+
+        logger.info(f"P&L snapshot completed for {len(all_bots)} bots at {snapshot_at}")
+    except Exception as e:
+        logger.error(f"Error in snapshot_pnl: {e}", exc_info=True)
+    finally:
+        db.close()
+
+
 @celery.task(name="app.workers.tasks.cache_prices")
 def cache_prices():
     """Fetch prices for all active trading bot symbols and cache in Redis"""

@@ -202,6 +202,30 @@ def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)
     ]
 
 
+@router.get("/pnl-snapshots")
+def pnl_snapshots(
+    days: int = 7,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Return hourly cumulative P&L snapshots across all bots."""
+    from app.repositories.pnl_snapshot_repo import PnlSnapshotRepository
+
+    since = datetime.utcnow() - timedelta(days=days)
+    snapshots = PnlSnapshotRepository(db).list_by_user(user.id, since=since)
+
+    # Aggregate total_pnl across all bots per hour
+    hourly: dict[str, float] = {}
+    for s in snapshots:
+        hour_key = s.snapshot_at.strftime("%Y-%m-%dT%H:00")
+        hourly[hour_key] = hourly.get(hour_key, 0.0) + s.total_pnl
+
+    return [
+        {"time": hour, "value": round(value, 2)}
+        for hour, value in sorted(hourly.items())
+    ]
+
+
 @router.get("/{bot_id}", response_model=TradingBotRead)
 def get_bot(bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     bot = TradingBotService(db).get(user.id, bot_id)

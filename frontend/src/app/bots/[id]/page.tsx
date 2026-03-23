@@ -270,7 +270,7 @@ export default function BotDetailPage() {
               }`}
             >
               {stats.realized_profit >= 0 ? "+" : ""}
-              {stats.realized_profit.toFixed(4)} $
+              {stats.realized_profit.toFixed(2)} $
             </span>
           </div>
           {stats.open_positions_count > 0 && (
@@ -280,7 +280,7 @@ export default function BotDetailPage() {
                   Open ({stats.open_positions_count} pos / {stats.open_positions_qty.toFixed(6)} tokens)
                 </span>
                 <span className="font-medium">
-                  {stats.open_positions_cost.toFixed(4)} $
+                  {stats.open_positions_cost.toFixed(2)} $
                 </span>
               </div>
               {stats.open_positions_value !== null && (
@@ -289,7 +289,7 @@ export default function BotDetailPage() {
                     Current Value
                   </span>
                   <span className="font-medium">
-                    {stats.open_positions_value.toFixed(4)} $
+                    {stats.open_positions_value.toFixed(2)} $
                   </span>
                 </div>
               )}
@@ -306,7 +306,7 @@ export default function BotDetailPage() {
                     }`}
                   >
                     {unrealized >= 0 ? "+" : ""}
-                    {unrealized.toFixed(4)} $
+                    {unrealized.toFixed(2)} $
                   </span>
                 </div>
               )}
@@ -325,7 +325,7 @@ export default function BotDetailPage() {
                 }`}
               >
                 {totalPnl >= 0 ? "+" : ""}
-                {totalPnl.toFixed(4)} $
+                {totalPnl.toFixed(2)} $
               </span>
             </div>
           )}
@@ -352,7 +352,7 @@ export default function BotDetailPage() {
                 Grid Step
               </span>
               <span className="font-medium">
-                {gridStep.toFixed(4)} $ ({gridStepPct.toFixed(2)}%)
+                {gridStep.toFixed(2)} $ ({gridStepPct.toFixed(2)}%)
               </span>
             </div>
           )}

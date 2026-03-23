@@ -298,6 +298,11 @@ export async function fetchProfitHistory(): Promise<ProfitPoint[]> {
   return handleResponse<ProfitPoint[]>(response);
 }
 
+export async function fetchPnlSnapshots(days = 7): Promise<ProfitPoint[]> {
+  const response = await authFetch(`${API_URL}/trading-bots/pnl-snapshots?days=${days}`);
+  return handleResponse<ProfitPoint[]>(response);
+}
+
 export async function fetchAllTrades(): Promise<Trade[]> {
   const response = await authFetch(`${API_URL}/trading-bots/trades/all`);
   return handleResponse<Trade[]>(response);
