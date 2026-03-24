@@ -274,7 +274,10 @@ def deactivate_bot(
 def delete_bot(
     bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
 ):
-    ok = TradingBotService(db).delete(user.id, bot_id)
+    try:
+        ok = TradingBotService(db).delete(user.id, bot_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete bot: {e}")
     if not ok:
         raise HTTPException(status_code=404, detail="Trading bot not found")
     return {"deleted": True}

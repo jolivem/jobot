@@ -40,6 +40,16 @@ class PnlSnapshotRepository:
             is not None
         )
 
+    def delete_by_bot(self, trading_bot_id: int) -> int:
+        """Delete all PnL snapshots for a bot. Returns count of deleted rows."""
+        count = (
+            self.db.query(PnlSnapshot)
+            .filter(PnlSnapshot.trading_bot_id == trading_bot_id)
+            .delete()
+        )
+        self.db.commit()
+        return count
+
     def list_by_user(self, user_id: int, since: datetime | None = None) -> list[PnlSnapshot]:
         query = (
             self.db.query(PnlSnapshot)
