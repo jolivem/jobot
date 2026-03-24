@@ -18,6 +18,7 @@ from app.api.routes.trading_bots import router as trading_bots_router
 from app.api.routes.symbols import router as symbols_router
 from app.api.routes.simulation import router as simulation_router
 from app.api.routes.account import router as account_router
+from app.api.routes.lstm_bots import router as lstm_bots_router
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(symbols_router)
     app.include_router(simulation_router)
     app.include_router(account_router)
+    app.include_router(lstm_bots_router)
 
     return app
 

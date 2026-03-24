@@ -67,7 +67,7 @@
 │  └──────────┘    │ klines_fetcher   │    ┌──────────────┐   │
 │       │          │ market_stats     │    │   Models     │   │
 │       │          └──────────────────┘    │  User        │   │
-│       ▼                                 │  TradingBot  │   │
+│       ▼                                  │  TradingBot  │   │
 │  ┌──────────┐    ┌──────────────────┐    │  Trade       │   │
 │  │  Core    │    │  Workers         │    │  Portfolio   │   │
 │  │ config   │    │  tasks.py        │    │  Screening   │   │
@@ -79,30 +79,44 @@
 └─────────────────────────────────────────────────────────────┘
 
 
-┌─────────────────────────────────────────────────────────────┐
-│                  TRADING BOT FLOW                            │
-│                                                             │
-│  Beat (every 3s)          Worker (per bot)                  │
-│  ┌───────────┐            ┌────────────────────────┐        │
-│  │cache_prices├──┐        │ run_trading_bot()      │        │
+┌────────────────────────────────────────────────────────────┐
+│                  TRADING BOT FLOW                          │
+│                                                            │
+│  Beat (every 3s)         Worker (per bot)                  │
+│  ┌───────────┐           ┌────────────────────────┐        │
+│  │cache_prices├──┐       │ run_trading_bot()      │        │
 │  └───────────┘  │        │                        │        │
-│                 ▼        │  1. Read price (Redis)  │        │
-│           ┌─────────┐    │  2. decide_trade()      │        │
-│  Binance ─► Redis   ├───►│  3. Place order         │        │
-│  prices   │ cache   │    │     (Binance API)       │        │
-│           └─────────┘    │  4. Record trade (DB)   │        │
-│                          │  5. Save state (Redis)  │        │
+│                 ▼        │  1. Read price (Redis) │        │
+│           ┌─────────┐    │  2. decide_trade()     │        │
+│  Binance ─► Redis   ├───►│  3. Place order        │        │
+│  prices   │ cache   │    │     (Binance API)      │        │
+│           └─────────┘    │  4. Record trade (DB)  │        │
+│                          │  5. Save state (Redis) │        │
 │                          └────────────────────────┘        │
-│                                                             │
-│  Grid Strategy:                                             │
-│  ┌─────────────────────────────────────────────┐            │
-│  │  max_price ─────────────────────── (amber)  │            │
-│  │  grid_level_1 ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo) │            │
-│  │  grid_level_2 ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo) │            │
-│  │  grid_level_N ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo) │            │
-│  │  min_price ─────────────────────── (amber)  │            │
-│  │                                             │            │
-│  │  BUY: price hits grid level + pullback ▲    │            │
-│  │  SELL: gain >= sell_% + pullback ▼          │            │
-│  └─────────────────────────────────────────────┘            │
-└─────────────────────────────────────────────────────────────┘
+│                                                            │
+│  Grid Strategy:                                            │
+│  ┌─────────────────────────────────────────────┐           │
+│  │  max_price ─────────────────────── (amber)  │           │
+│  │  grid_level_1 ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo)   │           │
+│  │  grid_level_2 ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo)   │           │
+│  │  grid_level_N ─ ─ ─ ─ ─ ─ ─ ─ ─  (indigo)   │           │
+│  │  min_price ─────────────────────── (amber)  │           │
+│  │                                             │           │
+│  │  BUY: price hits grid level + pullback ▲    │           │
+│  │  SELL: gain >= sell_% + pullback ▼          │           │
+│  └─────────────────────────────────────────────┘           │
+└────────────────────────────────────────────────────────────┘
+
+PC GPU                          Raspberry Pi
+┌─────────────────────┐        ┌──────────────────────────┐
+│ Train initial       │        │ API endpoint réception   │
+│ (TensorFlow + GPU)  │──.h5──>│ modèle                   │
+│                     │        │                          │
+│ Grid search         │        │ Fine-tuning incrémental  │
+│ Multi-timeframe     │        │ (TF Lite ou ONNX)        │
+└─────────────────────┘        │                          │
+                               │ Inférence (prédiction    │
+                               │ de pentes)               │
+                               │                          │
+                               │ Bot trading (décisions)  │
+                               └──────────────────────────┘

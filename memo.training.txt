@@ -1,0 +1,5 @@
+# Les 3 timeframes d'un coup
+python -m app.services.lstm_training --symbol ETHUSDC --timeframes 15m,1d,1w --days 180
+
+# Ou un seul timeframe
+python -m app.services.lstm_training --symbol ETHUSDC --timeframe 15m --days 180
