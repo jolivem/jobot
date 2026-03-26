@@ -178,6 +178,42 @@ def decide_trade(
                     f"grid level: {next_grid_index}/{len(grid_prices)})"
                 )
 
+    # === Re-buy at freed levels (sold positions above next_grid_index) ===
+    if (
+        previous_price is not None
+        and len(positions) < bot.grid_levels
+        and current_price <= bot.max_price
+        and to_close  # only check after a sell just happened
+    ):
+        for freed_pos in to_close:
+            freed_lvl = freed_pos.get("grid_level")
+            if freed_lvl is None or freed_lvl < 0:
+                continue
+            if freed_lvl in occupied_levels:
+                continue
+            if freed_lvl < next_grid_index and current_price <= grid_prices[freed_lvl]:
+                qty = bot.total_amount / bot.grid_levels / current_price
+                decisions.append({
+                    "side": "buy",
+                    "quantity": qty,
+                    "entry_price": current_price,
+                    "grid_level": freed_lvl,
+                })
+                positions.append({
+                    "qty": qty,
+                    "entry": current_price,
+                    "highest": current_price,
+                    "fee": qty * current_price * fee_pct,
+                    "grid_level": freed_lvl,
+                })
+                occupied_levels.add(freed_lvl)
+                logger.info(
+                    f"Bot {bot.id}: RE-BUY @ {current_price:.8f} "
+                    f"(qty: {qty:.6f}, positions: {len(positions)}, "
+                    f"freed grid level: {freed_lvl}/{len(grid_prices)})"
+                )
+                break  # one re-buy per tick
+
     state["positions"] = positions
     state["lowest_price"] = lowest_price
     state["grid_prices"] = grid_prices
