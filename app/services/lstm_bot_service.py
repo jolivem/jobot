@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.repositories.lstm_bot_repo import LstmBotRepository
+from app.services.lstm_model_service import has_model
 from app.workers.celery_app import celery
 
 
@@ -9,6 +10,12 @@ class LstmBotService:
 
     def _launch_bot_task(self, bot_id: int):
         celery.send_task("app.workers.lstm_tasks.run_lstm_bot", args=[bot_id])
+
+    def _check_models(self, bot_id: int, symbol: str, timeframes: str):
+        """Check if all models exist on disk and update status accordingly."""
+        tfs = [tf.strip() for tf in timeframes.split(",")]
+        if all(has_model(symbol, tf) for tf in tfs):
+            self.repo.set_model_status(bot_id, "ready")
 
     def create(
         self,
@@ -22,7 +29,7 @@ class LstmBotService:
         take_profit_pct: float = 2.0,
         stop_loss_pct: float = 3.0,
     ):
-        return self.repo.create(
+        bot = self.repo.create(
             user_id=user_id,
             symbol=symbol,
             timeframes=timeframes,
@@ -33,6 +40,8 @@ class LstmBotService:
             take_profit_pct=take_profit_pct,
             stop_loss_pct=stop_loss_pct,
         )
+        self._check_models(bot.id, bot.symbol, bot.timeframes)
+        return self.repo.get_by_id(user_id, bot.id)
 
     def list(self, user_id: int):
         return self.repo.list_by_user(user_id)

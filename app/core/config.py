@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     # Binance API Keys (optional - for trading)
     BINANCE_API_KEY: str | None = None
     BINANCE_SECRET_KEY: str | None = None
-    BINANCE_LIVE_TRADING: bool = False  # Set to True for live trading
+    BINANCE_LIVE_TRADING: bool = False  # Set to True for live trading (grid bots)
+    LSTM_LIVE_TRADING: bool = False  # Set to True for live trading (LSTM bots)
 
     # Grid trading parameters
     BUY_PULLBACK_PCT: float = 0.002   # 0.2% rebond after drop to confirm buy

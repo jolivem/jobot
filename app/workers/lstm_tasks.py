@@ -29,7 +29,7 @@ def run_lstm_bot(self, bot_id: int):
 
     # Resolve Binance trade service for live trading
     binance_service = None
-    if settings.BINANCE_LIVE_TRADING:
+    if settings.LSTM_LIVE_TRADING:
         db_user: Session = SessionLocal()
         try:
             user = LstmBotRepository(db_user).get_user_for_bot(bot_id)
@@ -38,6 +38,8 @@ def run_lstm_bot(self, bot_id: int):
                 api_secret = decrypt(user.binance_api_secret)
                 binance_service = BinanceTradeService(api_key, api_secret)
                 logger.info(f"LSTM Bot {bot_id}: live trading enabled")
+            else:
+                logger.warning(f"LSTM Bot {bot_id}: LSTM_LIVE_TRADING=true but user has no API credentials, running in simulation")
         finally:
             db_user.close()
 

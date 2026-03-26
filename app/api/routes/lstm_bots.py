@@ -1,4 +1,5 @@
 import logging
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
@@ -8,6 +9,7 @@ from app.schemas.lstm_bot import LstmBotCreate, LstmBotUpdate, LstmBotRead, Slop
 from app.services.lstm_bot_service import LstmBotService
 from app.services.lstm_model_service import (
     predict_slopes,
+    predict_slope_history,
     has_model,
     save_uploaded_model,
 )
@@ -101,6 +103,19 @@ def deactivate_bot(
     return bot
 
 
+@router.post("/{bot_id}/refresh-status", response_model=LstmBotRead)
+def refresh_model_status(
+    bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
+    """Check if models exist on disk and update model_status accordingly."""
+    svc = LstmBotService(db)
+    bot = svc.get(user.id, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="LSTM bot not found")
+    svc._check_models(bot.id, bot.symbol, bot.timeframes)
+    return svc.get(user.id, bot_id)
+
+
 @router.get("/{bot_id}/slopes", response_model=list[SlopeResponse])
 def get_slopes(
     bot_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
@@ -169,3 +184,79 @@ async def upload_model(
         LstmBotRepository(db).set_model_status(bot_id, "ready")
 
     return {"uploaded": True, "timeframe": timeframe, "all_models_ready": all_ready}
+
+
+@router.get("/{bot_id}/klines")
+def get_klines(
+    bot_id: int,
+    interval: str = "1h",
+    limit: int = 168,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Fetch candlestick data from Binance for an LSTM bot's symbol."""
+    from app.core.config import settings
+
+    allowed_intervals = {"1m","3m","5m","15m","30m","1h","2h","4h","6h","8h","12h","1d","3d","1w","1M"}
+    if interval not in allowed_intervals:
+        raise HTTPException(status_code=400, detail=f"Invalid interval: {interval}")
+    if limit < 1 or limit > 1000:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 1000")
+
+    bot = LstmBotService(db).get(user.id, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="LSTM bot not found")
+
+    url = f"{settings.BINANCE_BASE_URL}/api/v3/klines"
+    params = {"symbol": bot.symbol, "interval": interval, "limit": limit}
+
+    try:
+        resp = httpx.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Failed to fetch klines from Binance")
+
+    klines = [
+        {
+            "time": int(k[0] / 1000),
+            "open": float(k[1]),
+            "high": float(k[2]),
+            "low": float(k[3]),
+            "close": float(k[4]),
+            "volume": float(k[5]),
+        }
+        for k in resp.json()
+    ]
+    return klines
+
+
+@router.get("/{bot_id}/slope-history")
+def get_slope_history(
+    bot_id: int,
+    limit: int = 168,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Return predicted slope history for each model timeframe.
+
+    Each model fetches klines at its own interval (e.g. 15m model uses 15m
+    klines, 1d model uses 1d klines) so each prediction matches the model's
+    native timeframe.
+    """
+    from app.services.klines_fetcher import fetch_klines as fetch
+
+    bot = LstmBotService(db).get(user.id, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="LSTM bot not found")
+    if bot.model_status != "ready":
+        raise HTTPException(status_code=400, detail=f"Model not ready (status={bot.model_status})")
+
+    timeframes = bot.timeframes.split(",")
+    result = {}
+    for tf in timeframes:
+        # Each model uses its own timeframe klines
+        klines = fetch(bot.symbol, interval=tf, limit=limit + 100)
+        history = predict_slope_history(bot.symbol, tf, klines)
+        result[tf] = history or []
+
+    return result

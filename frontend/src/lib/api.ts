@@ -334,6 +334,113 @@ export async function fetchBotKlines(botId: number, interval = "1h", limit = 168
   return handleResponse<Kline[]>(response);
 }
 
+// ── LSTM Bot types ────────────────────────────────────────────
+
+export interface LstmBot {
+  id: number;
+  user_id: number;
+  symbol: string;
+  is_active: number;
+  timeframes: string;
+  total_amount: number;
+  max_positions: number;
+  buy_slope_threshold: number;
+  sell_slope_threshold: number;
+  take_profit_pct: number;
+  stop_loss_pct: number;
+  model_status: string;
+}
+
+export interface LstmBotCreate {
+  symbol: string;
+  timeframes: string;
+  total_amount: number;
+  max_positions: number;
+  buy_slope_threshold: number;
+  sell_slope_threshold: number;
+  take_profit_pct: number;
+  stop_loss_pct: number;
+}
+
+export interface LstmBotUpdate {
+  symbol?: string;
+  timeframes?: string;
+  total_amount?: number;
+  max_positions?: number;
+  buy_slope_threshold?: number;
+  sell_slope_threshold?: number;
+  take_profit_pct?: number;
+  stop_loss_pct?: number;
+  is_active?: number;
+}
+
+export interface SlopeInfo {
+  timeframe: string;
+  slope: number;
+  direction: string;
+}
+
+// ── LSTM Bot endpoints ────────────────────────────────────────
+
+export async function listLstmBots(): Promise<LstmBot[]> {
+  const response = await authFetch(`${API_URL}/lstm-bots`);
+  return handleResponse<LstmBot[]>(response);
+}
+
+export async function createLstmBot(data: LstmBotCreate): Promise<LstmBot> {
+  const response = await authFetch(`${API_URL}/lstm-bots`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<LstmBot>(response);
+}
+
+export async function updateLstmBot(botId: number, data: LstmBotUpdate): Promise<LstmBot> {
+  const response = await authFetch(`${API_URL}/lstm-bots/${botId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<LstmBot>(response);
+}
+
+export async function deleteLstmBot(botId: number): Promise<void> {
+  const response = await authFetch(`${API_URL}/lstm-bots/${botId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorResponse(response));
+  }
+}
+
+export async function refreshLstmModelStatus(botId: number): Promise<LstmBot> {
+  const response = await authFetch(`${API_URL}/lstm-bots/${botId}/refresh-status`, {
+    method: 'POST',
+  });
+  return handleResponse<LstmBot>(response);
+}
+
+export async function fetchLstmSlopes(botId: number): Promise<SlopeInfo[]> {
+  const response = await authFetch(`${API_URL}/lstm-bots/${botId}/slopes`);
+  return handleResponse<SlopeInfo[]>(response);
+}
+
+export interface SlopePoint {
+  time: number;
+  slope: number;
+}
+
+export async function fetchLstmSlopeHistory(botId: number, limit = 168): Promise<Record<string, SlopePoint[]>> {
+  const response = await authFetch(`${API_URL}/lstm-bots/${botId}/slope-history?limit=${limit}`);
+  return handleResponse<Record<string, SlopePoint[]>>(response);
+}
+
+export async function fetchLstmBotKlines(botId: number, interval = "1h", limit = 168): Promise<Kline[]> {
+  const response = await authFetch(`${API_URL}/lstm-bots/${botId}/klines?interval=${interval}&limit=${limit}`);
+  return handleResponse<Kline[]>(response);
+}
+
 // ── Account / BNB endpoints ───────────────────────────────────
 
 export async function fetchBnbBalance(): Promise<{ free: number; locked: number }> {

@@ -69,3 +69,4 @@ celerybeat.pid
 Thumbs.db
 
 screening/
+models/

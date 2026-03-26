@@ -31,7 +31,11 @@ def _load_meta(symbol: str, timeframe: str) -> dict | None:
 
 def _load_model(symbol: str, timeframe: str):
     """Load a Keras model from disk. Returns (model, meta) or (None, None)."""
-    import tensorflow as tf
+    try:
+        import tensorflow as tf
+    except ImportError:
+        logger.warning("TensorFlow not installed, LSTM inference unavailable")
+        return None, None
 
     model_path = os.path.join(_model_dir(symbol, timeframe), "saved_model.keras")
     meta = _load_meta(symbol, timeframe)
@@ -115,12 +119,13 @@ def predict_slope(symbol: str, timeframe: str) -> float | None:
     window = meta["params"]["WINDOW"]
 
     # Fetch enough klines to fill the window + margin for feature computation
-    klines = fetch_klines(symbol, interval=timeframe, limit=window + 50)
-    if len(klines) < window:
+    # Exclude the last candle (still forming, close price changes in real time)
+    klines = fetch_klines(symbol, interval=timeframe, limit=window + 51)
+    if len(klines) < window + 1:
         logger.warning(f"Not enough klines for {symbol}/{timeframe}: {len(klines)} < {window}")
         return None
 
-    closes = np.array([k["close"] for k in klines], dtype=np.float32)
+    closes = np.array([k["close"] for k in klines[:-1]], dtype=np.float32)
     Z = _build_features(closes, meta)
 
     # Take the last `window` candles as input
@@ -137,6 +142,49 @@ def predict_slopes(symbol: str, timeframes: list[str]) -> dict[str, float | None
     return results
 
 
+def predict_slope_history(
+    symbol: str, timeframe: str, klines: list[dict]
+) -> list[dict] | None:
+    """Predict slopes for a series of historical candles (batch inference).
+
+    Args:
+        symbol: Trading pair.
+        timeframe: Model timeframe (e.g. "15m", "1d").
+        klines: List of kline dicts with at least "time" and "close" keys.
+
+    Returns:
+        List of {"time": int, "slope": float} for each candle where a
+        prediction is possible (i.e. from position WINDOW onward), or None
+        if the model is not available.
+    """
+    model, meta = _load_model(symbol, timeframe)
+    if model is None:
+        return None
+
+    window = meta["params"]["WINDOW"]
+    closes = np.array([k["close"] for k in klines], dtype=np.float32)
+
+    if len(closes) < window + 1:
+        return None
+
+    Z = _build_features(closes, meta)
+
+    # Build all windows in one batch
+    xs = []
+    times = []
+    for i in range(window, len(Z)):
+        xs.append(Z[i - window : i])
+        times.append(klines[i]["time"])
+
+    if not xs:
+        return None
+
+    X = np.array(xs, dtype=np.float32)
+    preds = model.predict(X, verbose=0).ravel()
+
+    return [{"time": int(t) // 1000, "slope": float(s)} for t, s in zip(times, preds)]
+
+
 def fine_tune(symbol: str, timeframe: str, epochs: int = 5, batch_size: int = 64) -> bool:
     """Fine-tune an existing model with the latest klines data.
 
@@ -145,7 +193,11 @@ def fine_tune(symbol: str, timeframe: str, epochs: int = 5, batch_size: int = 64
 
     Returns True on success, False on failure.
     """
-    import tensorflow as tf
+    try:
+        import tensorflow as tf
+    except ImportError:
+        logger.warning("TensorFlow not installed, cannot fine-tune")
+        return False
 
     model, meta = _load_model(symbol, timeframe)
     if model is None:
