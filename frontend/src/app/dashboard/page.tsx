@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [bnbLocked, setBnbLocked] = useState<number | null>(null);
   const [bnbPrice, setBnbPrice] = useState<number | null>(null);
   const [bnbLoading, setBnbLoading] = useState(false);
+  const [usdcFree, setUsdcFree] = useState<number | null>(null);
 
   const [convertAmount, setConvertAmount] = useState("");
   const [converting, setConverting] = useState(false);
@@ -60,10 +61,12 @@ export default function DashboardPage() {
           setBnbFree(data.free);
           setBnbLocked(data.locked);
           setBnbPrice(price);
+          setUsdcFree(data.usdc_free ?? null);
         })
         .catch(() => {
           setBnbFree(null);
           setBnbLocked(null);
+          setUsdcFree(null);
         })
         .finally(() => setBnbLoading(false));
     }
@@ -463,7 +466,23 @@ export default function DashboardPage() {
 
       {/* BNB Section */}
       {user.binance_api_key && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* USDC Balance */}
+          <div className="p-5 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20">
+            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-2">
+              USDC disponible
+            </p>
+            {bnbLoading ? (
+              <p className="text-gray-400">Chargement...</p>
+            ) : usdcFree !== null ? (
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {usdcFree.toFixed(2)} $
+              </p>
+            ) : (
+              <p className="text-gray-400">Indisponible</p>
+            )}
+          </div>
+
           {/* BNB Balance */}
           <div className="p-5 rounded-xl bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/20">
             <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400 uppercase tracking-wide mb-2">

@@ -397,7 +397,7 @@ export default function BotsPage() {
                   </div>
                   <Link
                     href={`/bots/${bot.id}/chart`}
-                    className="flex items-center justify-center gap-1 py-1.5 text-xs font-medium bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition shadow-sm"
+                    className="flex items-center justify-center gap-1 py-1.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/40 transition"
                   >
                     Chart
                   </Link>
@@ -462,7 +462,7 @@ export default function BotsPage() {
                       <td className="px-4 py-3 text-center">
                         <Link
                           href={`/bots/${bot.id}/chart`}
-                          className="inline-flex items-center px-3 py-1 text-xs font-medium bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition shadow-sm"
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/40 transition"
                         >
                           Chart
                         </Link>

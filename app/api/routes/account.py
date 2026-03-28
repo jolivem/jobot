@@ -51,11 +51,15 @@ def bnb_balance(user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=f"Connection error: {str(e)}")
 
     balances = r.json().get("balances", [])
+    bnb = {"free": 0.0, "locked": 0.0}
+    usdc = {"free": 0.0, "locked": 0.0}
     for b in balances:
         if b["asset"] == "BNB":
-            return {"free": float(b["free"]), "locked": float(b["locked"])}
+            bnb = {"free": float(b["free"]), "locked": float(b["locked"])}
+        elif b["asset"] == "USDC":
+            usdc = {"free": float(b["free"]), "locked": float(b["locked"])}
 
-    return {"free": 0.0, "locked": 0.0}
+    return {"free": bnb["free"], "locked": bnb["locked"], "usdc_free": usdc["free"], "usdc_locked": usdc["locked"]}
 
 
 class ConvertToBnbRequest(BaseModel):
