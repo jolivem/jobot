@@ -64,6 +64,23 @@ class BinanceTradeService:
         # Fallback: 2 decimal places
         return f"{math.floor(quantity * 100) / 100:.2f}"
 
+    def get_asset_balance(self, asset: str) -> float:
+        """Get the free balance for an asset from Binance account."""
+        params = {"timestamp": int(time.time() * 1000)}
+        params["signature"] = self._sign(params)
+        headers = {"X-MBX-APIKEY": self.api_key}
+
+        r = self.client.get(
+            f"{self.base_url}/api/v3/account",
+            params=params,
+            headers=headers,
+        )
+        r.raise_for_status()
+        for b in r.json().get("balances", []):
+            if b["asset"] == asset.upper():
+                return float(b["free"])
+        return 0.0
+
     def place_order(self, symbol: str, side: str, quantity: float) -> dict:
         """Place a market order on Binance.
 

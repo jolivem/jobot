@@ -343,6 +343,20 @@ def emergency_sell(
     if settings.BINANCE_LIVE_TRADING and user.binance_api_key and user.binance_api_secret:
         binance = BinanceTradeService(decrypt(user.binance_api_key), decrypt(user.binance_api_secret))
         total_qty = sum(b.quantity for b in buys)
+
+        # Use actual Binance balance if lower than computed quantity
+        asset = bot.symbol.replace("USDC", "").replace("USDT", "")
+        try:
+            actual_balance = binance.get_asset_balance(asset)
+            if actual_balance < total_qty:
+                logger.warning(
+                    f"Emergency sell bot {bot_id}: computed qty={total_qty:.6f} "
+                    f"but Binance balance={actual_balance:.6f}, using balance"
+                )
+                total_qty = actual_balance
+        except Exception as e:
+            logger.warning(f"Emergency sell bot {bot_id}: could not fetch balance: {e}")
+
         logger.info(
             f"Emergency sell bot {bot_id} ({bot.symbol}): "
             f"{len(buys)} open positions, total_qty={total_qty}, "
