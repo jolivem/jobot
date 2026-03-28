@@ -336,9 +336,9 @@ export async function fetchBotKlines(botId: number, interval = "1h", limit = 168
 
 // ── Account / BNB endpoints ───────────────────────────────────
 
-export async function fetchBnbBalance(): Promise<{ free: number; locked: number }> {
+export async function fetchBnbBalance(): Promise<{ free: number; locked: number; usdc_free: number; usdc_locked: number }> {
   const response = await authFetch(`${API_URL}/account/bnb-balance`);
-  return handleResponse<{ free: number; locked: number }>(response);
+  return handleResponse<{ free: number; locked: number; usdc_free: number; usdc_locked: number }>(response);
 }
 
 export async function fetchPrice(symbol: string): Promise<number | null> {
