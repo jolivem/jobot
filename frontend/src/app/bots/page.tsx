@@ -414,6 +414,7 @@ export default function BotsPage() {
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Symbol</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Amount</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Total P&L</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Range</th>
                   <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Chart</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Monthly P&L</th>
                   <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Status</th>
@@ -458,6 +459,15 @@ export default function BotsPage() {
                             {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(2)} $
                           </span>
                         ) : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {(() => {
+                          const cp = s?.current_price;
+                          if (cp == null) return <span className="text-gray-400">—</span>;
+                          if (cp > bot.max_price) return <span className="font-medium text-orange-500">Above</span>;
+                          if (cp < bot.min_price) return <span className="font-medium text-blue-500">Below</span>;
+                          return <span className="font-medium text-green-600 dark:text-green-400">Inside</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Link
