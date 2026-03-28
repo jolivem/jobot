@@ -553,7 +553,7 @@ export default function BotDetailPage() {
           </Link>
           <Link
             href={`/bots/${bot.id}/chart`}
-            className="flex-1 text-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition shadow-sm"
+            className="flex-1 text-center px-4 py-2 text-sm font-medium bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/40 transition"
           >
             Chart
           </Link>

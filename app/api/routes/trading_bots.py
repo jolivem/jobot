@@ -329,12 +329,25 @@ def emergency_sell(
     if not buys:
         raise HTTPException(status_code=400, detail="No open positions to sell")
 
-    # Get current market price
+    # Get current market price (Redis cache, then Binance API fallback)
+    current_price = None
     try:
         cache = RedisCache()
         current_price = cache.get_price(bot.symbol)
     except Exception:
-        current_price = None
+        pass
+
+    if current_price is None:
+        try:
+            resp = httpx.get(
+                f"{settings.BINANCE_BASE_URL}/api/v3/ticker/price",
+                params={"symbol": bot.symbol},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            current_price = float(resp.json()["price"])
+        except Exception:
+            pass
 
     if current_price is None:
         raise HTTPException(status_code=503, detail="Current price unavailable")
