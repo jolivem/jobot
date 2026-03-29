@@ -143,11 +143,13 @@ def decide_trade(
 
     # === Check grid buy ===
     occupied_levels = {pos.get("grid_level") for pos in positions}
+    lowest_entry = min(p["entry"] for p in positions)
     if (
         previous_price is not None
         and next_grid_index < len(grid_prices)
         and len(positions) < bot.grid_levels
         and current_price <= bot.max_price
+        and current_price < lowest_entry
         and next_grid_index not in occupied_levels
     ):
         target = grid_prices[next_grid_index]
