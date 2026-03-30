@@ -124,6 +124,12 @@ def run_trading_bot(self, bot_id: int):
     """
     logger.info(f"Starting trading bot task for bot_id={bot_id}")
     cache = RedisCache()
+
+    # Acquire exclusive lock — abort if another instance is already running
+    if not cache.acquire_bot_lock(bot_id):
+        logger.warning(f"Bot {bot_id}: another instance is already running, aborting")
+        return
+
     iteration = 0
     db_check_interval = 30
     previous_price = None
@@ -171,95 +177,102 @@ def run_trading_bot(self, bot_id: int):
         finally:
             db_init.close()
 
-    while True:
-        db: Session = SessionLocal()
-        try:
-            bot_repo = TradingBotRepository(db)
+    try:
+        while True:
+            # Renew lock every iteration (TTL=10s, loop=1s → safe margin)
+            cache.renew_bot_lock(bot_id)
 
-            # Periodically verify bot is still active
-            if iteration % db_check_interval == 0:
+            db: Session = SessionLocal()
+            try:
+                bot_repo = TradingBotRepository(db)
+
+                # Periodically verify bot is still active
+                if iteration % db_check_interval == 0:
+                    bot = bot_repo.get_active_by_id(bot_id)
+                    if not bot:
+                        logger.info(f"Bot {bot_id} is no longer active, stopping task")
+                        cache.delete_bot_state(bot_id)
+                        return
+
                 bot = bot_repo.get_active_by_id(bot_id)
                 if not bot:
-                    logger.info(f"Bot {bot_id} is no longer active, stopping task")
+                    logger.info(f"Bot {bot_id} not found or inactive, stopping task")
                     cache.delete_bot_state(bot_id)
                     return
 
-            bot = bot_repo.get_active_by_id(bot_id)
-            if not bot:
-                logger.info(f"Bot {bot_id} not found or inactive, stopping task")
-                cache.delete_bot_state(bot_id)
-                return
+                # Read price from Redis
+                price = cache.get_price(bot.symbol)
+                if price is None:
+                    if iteration % 30 == 0:
+                        logger.warning(f"Bot {bot_id}: no price in Redis for {bot.symbol}, waiting...")
+                    iteration += 1
+                    time.sleep(1)
+                    continue
 
-            # Read price from Redis
-            price = cache.get_price(bot.symbol)
-            if price is None:
-                if iteration % 30 == 0:
-                    logger.warning(f"Bot {bot_id}: no price in Redis for {bot.symbol}, waiting...")
-                iteration += 1
-                time.sleep(1)
-                continue
+                # Run grid trading strategy
+                decisions, state = decide_trade(bot, price, state, previous_price)
 
-            # Run grid trading strategy
-            decisions, state = decide_trade(bot, price, state, previous_price)
+                # Execute and record each decision
+                if decisions:
+                    trade_repo = TradeRepository(db)
+                    for decision in decisions:
+                        filled_price = decision["entry_price"]
+                        filled_qty = decision["quantity"]
 
-            # Execute and record each decision
-            if decisions:
-                trade_repo = TradeRepository(db)
-                for decision in decisions:
-                    filled_price = decision["entry_price"]
-                    filled_qty = decision["quantity"]
+                        # Place real order on Binance if live trading is enabled
+                        if binance_service:
+                            try:
+                                result = binance_service.place_order(
+                                    bot.symbol, decision["side"].upper(), decision["quantity"]
+                                )
+                                # Use actual filled price/qty from Binance response
+                                fills = result.get("fills", [])
+                                if fills:
+                                    total_qty = sum(float(f["qty"]) for f in fills)
+                                    total_cost = sum(float(f["qty"]) * float(f["price"]) for f in fills)
+                                    filled_price = total_cost / total_qty if total_qty > 0 else filled_price
+                                    filled_qty = total_qty
+                                logger.info(f"Bot {bot_id}: {decision['side']} {filled_qty} {bot.symbol} @ {filled_price}")
+                            except Exception as e:
+                                logger.error(f"Bot {bot_id}: Binance order failed: {e}", exc_info=True)
+                                continue  # Skip recording if real order failed
 
-                    # Place real order on Binance if live trading is enabled
-                    if binance_service:
-                        try:
-                            result = binance_service.place_order(
-                                bot.symbol, decision["side"].upper(), decision["quantity"]
-                            )
-                            # Use actual filled price/qty from Binance response
-                            fills = result.get("fills", [])
-                            if fills:
-                                total_qty = sum(float(f["qty"]) for f in fills)
-                                total_cost = sum(float(f["qty"]) * float(f["price"]) for f in fills)
-                                filled_price = total_cost / total_qty if total_qty > 0 else filled_price
-                                filled_qty = total_qty
-                            logger.info(f"Bot {bot_id}: {decision['side']} {filled_qty} {bot.symbol} @ {filled_price}")
-                        except Exception as e:
-                            logger.error(f"Bot {bot_id}: Binance order failed: {e}", exc_info=True)
-                            continue  # Skip recording if real order failed
+                        matched_buy_id = None
+                        if decision["side"] == "sell" and "buy_entry" in decision:
+                            matched_buy = trade_repo.find_unmatched_buy(bot_id, decision["buy_entry"])
+                            if matched_buy:
+                                matched_buy_id = matched_buy.id
 
-                    matched_buy_id = None
-                    if decision["side"] == "sell" and "buy_entry" in decision:
-                        matched_buy = trade_repo.find_unmatched_buy(bot_id, decision["buy_entry"])
-                        if matched_buy:
-                            matched_buy_id = matched_buy.id
+                        trade_repo.create(
+                            trading_bot_id=bot_id,
+                            trade_type=decision["side"],
+                            price=filled_price,
+                            quantity=filled_qty,
+                            matched_buy_trade_id=matched_buy_id,
+                            grid_level=decision.get("grid_level"),
+                        )
 
-                    trade_repo.create(
-                        trading_bot_id=bot_id,
-                        trade_type=decision["side"],
-                        price=filled_price,
-                        quantity=filled_qty,
-                        matched_buy_trade_id=matched_buy_id,
-                        grid_level=decision.get("grid_level"),
-                    )
+                        # Sync state positions with actual Binance fill
+                        if binance_service and decision["side"] == "buy":
+                            for pos in reversed(state.get("positions", [])):
+                                if abs(pos["entry"] - decision["entry_price"]) < 1e-8:
+                                    pos["qty"] = filled_qty
+                                    pos["entry"] = filled_price
+                                    pos["fee"] = filled_qty * filled_price * settings.FEE_PCT
+                                    break
 
-                    # Sync state positions with actual Binance fill
-                    if binance_service and decision["side"] == "buy":
-                        for pos in reversed(state.get("positions", [])):
-                            if abs(pos["entry"] - decision["entry_price"]) < 1e-8:
-                                pos["qty"] = filled_qty
-                                pos["entry"] = filled_price
-                                pos["fee"] = filled_qty * filled_price * settings.FEE_PCT
-                                break
+                # Persist updated state to Redis every tick
+                cache.set_bot_state(bot_id, state)
 
-            # Persist updated state to Redis every tick
-            cache.set_bot_state(bot_id, state)
+                previous_price = price
 
-            previous_price = price
+            except Exception as e:
+                logger.error(f"Bot {bot_id}: unexpected error: {e}", exc_info=True)
+            finally:
+                db.close()
 
-        except Exception as e:
-            logger.error(f"Bot {bot_id}: unexpected error: {e}", exc_info=True)
-        finally:
-            db.close()
-
-        iteration += 1
-        time.sleep(1)
+            iteration += 1
+            time.sleep(1)
+    finally:
+        cache.release_bot_lock(bot_id)
+        logger.info(f"Bot {bot_id}: released lock")

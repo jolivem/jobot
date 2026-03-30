@@ -11,9 +11,11 @@ import {
   fetchPnlSnapshots,
   fetchBotStats,
   listBots,
+  fetchHealth,
   type ProfitPoint,
   type BotStats,
   type TradingBot,
+  type HealthStatus,
 } from "@/lib/api";
 import {
   createChart,
@@ -45,6 +47,7 @@ export default function DashboardPage() {
   const [pnlRange, setPnlRange] = useState<"24h" | "7d" | "30d">("7d");
   const [stats, setStats] = useState<BotStats[]>([]);
   const [bots, setBots] = useState<TradingBot[]>([]);
+  const [health, setHealth] = useState<HealthStatus | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const pnlChartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -82,6 +85,7 @@ export default function DashboardPage() {
         setPnlData(pnl);
       })
       .catch(() => {});
+    fetchHealth().then(setHealth).catch(() => setHealth(null));
   }, [loading, isAuthenticated]);
 
   // Computed totals
@@ -463,6 +467,108 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Services Monitoring */}
+      {health && (
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Redis */}
+          <div className={`p-4 rounded-xl border ${
+            health.redis.connected
+              ? "border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/5"
+              : "border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5"
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full ${health.redis.connected ? "bg-emerald-500" : "bg-red-500"}`} />
+              <p className="text-sm font-semibold">Redis</p>
+            </div>
+            {health.redis.connected ? (
+              <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                <p>Memory: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.used_memory_human}</span></p>
+                <p>Clients: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.connected_clients}</span></p>
+                <p>Prices cached: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.cached_prices}</span></p>
+                <p>Bot locks: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.active_bot_locks}</span></p>
+              </div>
+            ) : (
+              <p className="text-xs text-red-500">Disconnected</p>
+            )}
+          </div>
+
+          {/* Database */}
+          <div className={`p-4 rounded-xl border ${
+            health.database.connected
+              ? "border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/5"
+              : "border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5"
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full ${health.database.connected ? "bg-emerald-500" : "bg-red-500"}`} />
+              <p className="text-sm font-semibold">MariaDB</p>
+            </div>
+            {health.database.connected ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400">Connected</p>
+            ) : (
+              <p className="text-xs text-red-500">{health.database.error || "Disconnected"}</p>
+            )}
+          </div>
+
+          {/* Celery Workers */}
+          <div className={`p-4 rounded-xl border ${
+            health.celery.online > 0
+              ? "border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/5"
+              : "border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5"
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full ${health.celery.online > 0 ? "bg-emerald-500" : "bg-red-500"}`} />
+              <p className="text-sm font-semibold">Celery</p>
+              <span className="text-xs text-gray-400">{health.celery.online} worker{health.celery.online !== 1 ? "s" : ""}</span>
+            </div>
+            {health.celery.workers.length > 0 ? (
+              <div className="space-y-1.5 text-xs">
+                {health.celery.workers.map((w) => (
+                  <div key={w.name} className="flex items-center justify-between text-gray-500 dark:text-gray-400">
+                    <span className="truncate max-w-[120px]" title={w.name}>
+                      {w.name.split("@")[0]}
+                    </span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                      {w.active_tasks} / {w.concurrency}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-red-500">No workers online</p>
+            )}
+          </div>
+
+          {/* Price Feed */}
+          <div className={`p-4 rounded-xl border ${
+            health.price_feed.status === "ok"
+              ? "border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/5"
+              : health.price_feed.status === "degraded"
+              ? "border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-yellow-500/5"
+              : "border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5"
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full ${
+                health.price_feed.status === "ok" ? "bg-emerald-500"
+                : health.price_feed.status === "degraded" ? "bg-amber-500"
+                : "bg-red-500"
+              }`} />
+              <p className="text-sm font-semibold">Price Feed</p>
+            </div>
+            <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <p>Fresh: <span className="font-medium text-gray-700 dark:text-gray-300">{health.price_feed.fresh_prices}</span></p>
+              {health.price_feed.stale_prices > 0 && (
+                <p>Stale: <span className="font-medium text-amber-600 dark:text-amber-400">{health.price_feed.stale_prices}</span></p>
+              )}
+              {health.price_feed.stale_symbols && health.price_feed.stale_symbols.length > 0 && (
+                <p className="text-amber-500 truncate" title={health.price_feed.stale_symbols.join(", ")}>
+                  {health.price_feed.stale_symbols.join(", ")}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BNB Section */}
       {user.binance_api_key && (

@@ -683,6 +683,56 @@ class TestFullScenario:
         assert len(buys) <= 10, f"Expected at most 10 buys, got {len(buys)}"
         assert len(state["positions"]) <= 10
 
+    def test_real_klines_ethusdc_20260329(self):
+        """Replay real 1-second ETHUSDC klines from 2026-03-29 22:40-22:55 Paris time.
+
+        Bot: ETHUSDC min=1975, max=2015, amount=2000, grid_levels=10, sell=3%.
+        Grid step = (2015-1975)/10 = 4.0
+        Grid levels: [2011, 2007, 2003, 1999, 1995, 1991, 1987, 1983, 1979]
+        """
+        import json, os
+
+        bot = make_bot(
+            symbol="ETHUSDC",
+            min_price=1975.0,
+            max_price=2015.0,
+            total_amount=2000.0,
+            grid_levels=10,
+            sell_percentage=3.0,
+        )
+
+        kline_path = os.path.join(os.path.dirname(__file__), "..", "testset.kline")
+        with open(kline_path) as f:
+            raw = json.load(f)
+        prices = [float(k[4]) for k in raw]  # close prices
+
+        all_decisions, state = run_prices(bot, prices)
+        buys = [d for d in all_decisions if d["side"] == "buy"]
+        sells = [d for d in all_decisions if d["side"] == "sell"]
+
+        # Print positions for inspection
+        print(f"\n--- ETHUSDC real klines test ---")
+        print(f"Price range: {min(prices):.2f} - {max(prices):.2f}")
+        print(f"Buys: {len(buys)}")
+        for i, b in enumerate(buys):
+            print(f"  BUY #{i+1}: price={b['entry_price']:.2f}, qty={b['quantity']:.6f}, grid_level={b.get('grid_level')}")
+        print(f"Sells: {len(sells)}")
+        for i, s in enumerate(sells):
+            print(f"  SELL #{i+1}: price={s['entry_price']:.2f}")
+        print(f"Open positions: {len(state['positions'])}")
+        for i, p in enumerate(state["positions"]):
+            print(f"  Pos #{i+1}: entry={p['entry']:.2f}, qty={p['qty']:.6f}, grid_level={p.get('grid_level')}")
+
+        # Sanity checks
+        assert len(buys) >= 1, "Should have at least one buy"
+        assert len(state["positions"]) <= bot.grid_levels, "Should not exceed grid_levels"
+        # Each successive buy must be at a lower price than the previous
+        for i in range(1, len(buys)):
+            assert buys[i]["entry_price"] < buys[i-1]["entry_price"], (
+                f"Buy #{i+1} at {buys[i]['entry_price']:.2f} should be below "
+                f"Buy #{i} at {buys[i-1]['entry_price']:.2f}"
+            )
+
     def test_grid_levels_1_only_one_buy(self):
         """With grid_levels=1, only one buy per cycle, no grid."""
         bot = make_bot(grid_levels=1, sell_percentage=2.0)

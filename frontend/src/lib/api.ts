@@ -336,6 +336,41 @@ export async function fetchBotKlines(botId: number, interval = "1h", limit = 168
 
 // ── Account / BNB endpoints ───────────────────────────────────
 
+export interface HealthStatus {
+  status: string;
+  redis: {
+    connected: boolean;
+    used_memory_human?: string;
+    connected_clients?: number;
+    cached_prices?: number;
+    active_bot_locks?: number;
+  };
+  database: {
+    connected: boolean;
+    error?: string;
+  };
+  celery: {
+    online: number;
+    workers: {
+      name: string;
+      status: string;
+      active_tasks: number;
+      concurrency: number | string;
+    }[];
+  };
+  price_feed: {
+    status: string;
+    fresh_prices: number;
+    stale_prices: number;
+    stale_symbols?: string[];
+  };
+}
+
+export async function fetchHealth(): Promise<HealthStatus> {
+  const response = await fetch(`${API_URL}/health`);
+  return response.json();
+}
+
 export async function fetchBnbBalance(): Promise<{ free: number; locked: number; usdc_free: number; usdc_locked: number }> {
   const response = await authFetch(`${API_URL}/account/bnb-balance`);
   return handleResponse<{ free: number; locked: number; usdc_free: number; usdc_locked: number }>(response);

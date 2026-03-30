@@ -101,3 +101,18 @@ class RedisCache:
         """Remove trading bot runtime state."""
         key = f"bot_state:{bot_id}"
         self.client.delete(key)
+
+    def acquire_bot_lock(self, bot_id: int, ttl: int = 10) -> bool:
+        """Try to acquire an exclusive lock for a bot task. Returns True if acquired."""
+        key = f"bot_lock:{bot_id}"
+        return bool(self.client.set(key, "1", nx=True, ex=ttl))
+
+    def renew_bot_lock(self, bot_id: int, ttl: int = 10) -> None:
+        """Renew the TTL on an existing bot lock."""
+        key = f"bot_lock:{bot_id}"
+        self.client.expire(key, ttl)
+
+    def release_bot_lock(self, bot_id: int) -> None:
+        """Release a bot lock."""
+        key = f"bot_lock:{bot_id}"
+        self.client.delete(key)
