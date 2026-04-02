@@ -3,7 +3,7 @@
 import math
 from types import SimpleNamespace
 from dataclasses import dataclass
-from app.services.trading_strategy import decide_trade
+from app.services.trading_strategy import decide_trade, _create_buy_levels_from_config
 from app.core.config import settings
 
 
@@ -66,8 +66,7 @@ def run_backtest(
     state: dict = {
         "positions": [],
         "lowest_price": None,
-        "grid_prices": [],
-        "next_grid_index": 0,
+        "buy_levels": _create_buy_levels_from_config(bot),
     }
 
     previous_price: float | None = None

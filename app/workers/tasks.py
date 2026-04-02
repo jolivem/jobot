@@ -4,9 +4,10 @@ from app.workers.celery_app import celery
 from app.core.db import SessionLocal
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
+from app.repositories.buy_level_repo import BuyLevelRepository
 from app.services.binance_price_service import BinancePriceService
 from app.services.binance_trade_service import BinanceTradeService
-from app.services.trading_strategy import decide_trade, reconstruct_state_from_trades
+from app.services.trading_strategy import decide_trade, reconstruct_state_from_trades, _create_buy_levels_from_config
 from app.core.cache import RedisCache
 from app.core.config import settings
 from app.core.encryption import decrypt
@@ -114,6 +115,49 @@ def restart_active_bots():
         db.close()
 
 
+def _load_or_create_buy_levels(db: Session, bot: "TradingBot", trades: list) -> list:
+    """Load buy_levels from DB, or create them if missing (migration path)."""
+    bl_repo = BuyLevelRepository(db)
+    buy_levels_db = bl_repo.list_by_bot(bot.id)
+
+    if not buy_levels_db:
+        # First time: create levels in DB
+        buy_levels_db = bl_repo.create_grid(bot.id, bot.max_price, bot.min_price, bot.grid_levels)
+        logger.info(f"Bot {bot.id}: created {len(buy_levels_db)} buy_levels in DB")
+
+        # Set statuses from existing trades
+        if trades:
+            sorted_trades = sorted(trades, key=lambda t: t.created_at)
+            bought_levels = set()
+            sold_levels = set()
+            for t in sorted_trades:
+                gl = getattr(t, "grid_level", None)
+                if gl is None or gl < 0:
+                    continue
+                if t.trade_type == "buy":
+                    bought_levels.add(gl)
+                    sold_levels.discard(gl)
+                elif t.trade_type == "sell":
+                    if gl in bought_levels:
+                        sold_levels.add(gl)
+                        bought_levels.discard(gl)
+            for gl in bought_levels:
+                bl_repo.update_status(bot.id, gl, "bought")
+            for gl in sold_levels:
+                bl_repo.update_status(bot.id, gl, "sold")
+            # Reload after updates
+            buy_levels_db = bl_repo.list_by_bot(bot.id)
+
+    return buy_levels_db
+
+
+def _sync_buy_levels_to_db(db: Session, bot_id: int, buy_levels_state: list):
+    """Sync buy_levels from Redis state to DB (only on changes)."""
+    bl_repo = BuyLevelRepository(db)
+    for lvl in buy_levels_state:
+        bl_repo.update_status(bot_id, lvl["level_index"], lvl["status"])
+
+
 @celery.task(name="app.workers.tasks.run_trading_bot", bind=True)
 def run_trading_bot(self, bot_id: int):
     """Long-running task for a single trading bot.
@@ -150,12 +194,7 @@ def run_trading_bot(self, bot_id: int):
         finally:
             db_user.close()
 
-    default_state = {
-        "positions": [], "lowest_price": None,
-        "grid_prices": [], "next_grid_index": 0,
-    }
-
-    # Load bot state from Redis, or reconstruct from DB trades
+    # Load bot state from Redis, or reconstruct from DB trades + buy_levels
     state = cache.get_bot_state(bot_id)
     if state is None:
         db_init: Session = SessionLocal()
@@ -164,16 +203,14 @@ def run_trading_bot(self, bot_id: int):
             bot_init = bot_repo_init.get_active_by_id(bot_id)
             if bot_init:
                 trades = TradeRepository(db_init).list_by_bot(bot_id)
-                if trades:
-                    state = reconstruct_state_from_trades(bot_init, trades)
-                    cache.set_bot_state(bot_id, state)
-                else:
-                    state = dict(default_state)
+                buy_levels_db = _load_or_create_buy_levels(db_init, bot_init, trades)
+                state = reconstruct_state_from_trades(bot_init, trades, buy_levels_db)
+                cache.set_bot_state(bot_id, state)
             else:
-                state = dict(default_state)
+                state = {"positions": [], "lowest_price": None, "buy_levels": []}
         except Exception as e:
             logger.error(f"Bot {bot_id}: error reconstructing state: {e}", exc_info=True)
-            state = dict(default_state)
+            state = {"positions": [], "lowest_price": None, "buy_levels": []}
         finally:
             db_init.close()
 
@@ -209,6 +246,9 @@ def run_trading_bot(self, bot_id: int):
                     time.sleep(1)
                     continue
 
+                # Save buy_levels state before decisions (for rollback if orders fail)
+                pre_decision_levels = [dict(lvl) for lvl in state.get("buy_levels", [])]
+
                 # Run grid trading strategy
                 decisions, state = decide_trade(bot, price, state, previous_price)
 
@@ -235,6 +275,18 @@ def run_trading_bot(self, bot_id: int):
                                 logger.info(f"Bot {bot_id}: {decision['side']} {filled_qty} {bot.symbol} @ {filled_price}")
                             except Exception as e:
                                 logger.error(f"Bot {bot_id}: Binance order failed: {e}", exc_info=True)
+                                # Rollback state: restore position that wasn't actually sold
+                                if decision["side"] == "sell" and "_closed_position" in decision:
+                                    state.setdefault("positions", []).append(decision["_closed_position"])
+                                    state["buy_levels"] = pre_decision_levels
+                                # Rollback state: remove position that wasn't actually bought
+                                elif decision["side"] == "buy":
+                                    positions = state.get("positions", [])
+                                    for i in range(len(positions) - 1, -1, -1):
+                                        if abs(positions[i]["entry"] - decision["entry_price"]) < 1e-8:
+                                            positions.pop(i)
+                                            break
+                                    state["buy_levels"] = pre_decision_levels
                                 continue  # Skip recording if real order failed
 
                         matched_buy_id = None
@@ -260,6 +312,9 @@ def run_trading_bot(self, bot_id: int):
                                     pos["entry"] = filled_price
                                     pos["fee"] = filled_qty * filled_price * settings.FEE_PCT
                                     break
+
+                    # Sync buy_levels to DB after trades
+                    _sync_buy_levels_to_db(db, bot_id, state.get("buy_levels", []))
 
                 # Persist updated state to Redis every tick
                 cache.set_bot_state(bot_id, state)
