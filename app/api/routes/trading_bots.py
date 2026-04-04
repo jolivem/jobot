@@ -184,11 +184,11 @@ def profit_history(db: Session = Depends(get_db), user=Depends(get_current_user)
             day_key = t.created_at.strftime("%Y-%m-%d")
             daily_profit[day_key] = daily_profit.get(day_key, 0.0) + profit
 
-    # Fill gaps with 0 so every day has a bar
+    # Fill gaps with 0 so every day has a bar (up to today)
     if daily_profit:
         sorted_days = sorted(daily_profit.keys())
         start = datetime.strptime(sorted_days[0], "%Y-%m-%d").date()
-        end = datetime.strptime(sorted_days[-1], "%Y-%m-%d").date()
+        end = datetime.now(timezone.utc).date()
         day = start
         while day <= end:
             key = day.strftime("%Y-%m-%d")
