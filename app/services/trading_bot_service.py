@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 from app.repositories.pnl_snapshot_repo import PnlSnapshotRepository
+from app.repositories.buy_level_repo import BuyLevelRepository
 from app.core.cache import RedisCache
 from app.workers.celery_app import celery
 
@@ -94,6 +95,7 @@ class TradingBotService:
             return False
         # Delete associated data first (foreign key constraints)
         PnlSnapshotRepository(self.repo.db).detach_bot(bot_id)
+        BuyLevelRepository(self.repo.db).delete_by_bot(bot_id)
         TradeRepository(self.repo.db).delete_by_bot(bot_id)
         # Clean up Redis state
         try:
