@@ -93,7 +93,7 @@ class TradingBotService:
         if not bot:
             return False
         # Delete associated data first (foreign key constraints)
-        PnlSnapshotRepository(self.repo.db).delete_by_bot(bot_id)
+        PnlSnapshotRepository(self.repo.db).detach_bot(bot_id)
         TradeRepository(self.repo.db).delete_by_bot(bot_id)
         # Clean up Redis state
         try:

@@ -8,7 +8,7 @@ class PnlSnapshot(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
-    trading_bot_id: Mapped[int] = mapped_column(Integer, ForeignKey("trading_bots.id"), index=True)
+    trading_bot_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trading_bots.id"), nullable=True, index=True)
     realized_pnl: Mapped[float] = mapped_column(Float, nullable=False)
     unrealized_pnl: Mapped[float] = mapped_column(Float, nullable=False)
     total_pnl: Mapped[float] = mapped_column(Float, nullable=False)

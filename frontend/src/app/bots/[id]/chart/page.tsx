@@ -346,7 +346,7 @@ export default function ChartPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <p className="text-red-500">{error}</p>
-        <Link href={`/bots/${botId}`} className="text-blue-600 hover:underline mt-4 inline-block">
+        <Link href="/bots" className="text-blue-600 hover:underline mt-4 inline-block">
           Back to bots
         </Link>
       </div>
@@ -367,7 +367,7 @@ export default function ChartPage() {
           </p>
         </div>
         <Link
-          href={`/bots/${botId}`}
+          href="/bots"
           className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
         >
           Back

@@ -50,6 +50,20 @@ class PnlSnapshotRepository:
         self.db.commit()
         return count
 
+    def detach_bot(self, trading_bot_id: int) -> int:
+        """Set trading_bot_id to NULL for all snapshots of a bot.
+
+        Keeps snapshots for cumulative P&L history after bot deletion.
+        Returns count of updated rows.
+        """
+        count = (
+            self.db.query(PnlSnapshot)
+            .filter(PnlSnapshot.trading_bot_id == trading_bot_id)
+            .update({"trading_bot_id": None})
+        )
+        self.db.commit()
+        return count
+
     def list_by_user(self, user_id: int, since: datetime | None = None) -> list[PnlSnapshot]:
         query = (
             self.db.query(PnlSnapshot)
