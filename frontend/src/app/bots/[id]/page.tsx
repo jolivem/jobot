@@ -261,6 +261,12 @@ export default function BotDetailPage() {
         <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/5 to-teal-500/5 space-y-2 text-sm mb-6 border border-emerald-500/20">
           <h2 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-400">Monitoring</h2>
           <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">Created</span>
+            <span className="font-medium">
+              {new Date(bot.created_at).toLocaleDateString()}
+            </span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Realized Profit</span>
             <span
               className={`font-medium ${

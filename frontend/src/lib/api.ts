@@ -53,6 +53,7 @@ export interface TradingBot {
   total_amount: number;
   sell_percentage: number;
   grid_levels: number;
+  created_at: string;
 }
 
 export interface TradingBotCreate {

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 
@@ -43,6 +44,7 @@ class TradingBotRead(BaseModel):
     total_amount: float
     sell_percentage: float
     grid_levels: int
+    created_at: datetime
 
     class Config:
         from_attributes = True

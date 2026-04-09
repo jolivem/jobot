@@ -395,12 +395,24 @@ export default function BotsPage() {
                       ) : <span className="text-gray-400">—</span>}
                     </div>
                   </div>
-                  <Link
-                    href={`/bots/${bot.id}/chart`}
-                    className="flex items-center justify-center gap-1 py-1.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/40 transition"
-                  >
-                    Chart
-                  </Link>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Range</p>
+                      {(() => {
+                        const cp = s?.current_price;
+                        if (cp == null) return <span className="text-gray-400">—</span>;
+                        if (cp > bot.max_price) return <span className="font-medium text-orange-500">Above</span>;
+                        if (cp < bot.min_price) return <span className="font-medium text-blue-500">Below</span>;
+                        return <span className="font-medium text-green-600 dark:text-green-400">Inside</span>;
+                      })()}
+                    </div>
+                    <Link
+                      href={`/bots/${bot.id}/chart`}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/40 transition"
+                    >
+                      Chart
+                    </Link>
+                  </div>
                 </div>
               );
             })}
