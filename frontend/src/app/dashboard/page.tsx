@@ -276,6 +276,52 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
 
+      {/* Cumulative P&L Chart */}
+      <div className="mb-8 p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Cumulative P&L</h2>
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs font-medium">
+              {(["24h", "7d", "30d"] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setPnlRange(range)}
+                  className={`px-3 py-1.5 transition ${
+                    pnlRange === range
+                      ? "bg-emerald-500 text-white"
+                      : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+          </div>
+          {filteredPnlData.length > 0 && (
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Latest:{" "}
+              <span
+                className={`font-medium ${
+                  filteredPnlData[filteredPnlData.length - 1].value >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-500"
+                }`}
+              >
+                {filteredPnlData[filteredPnlData.length - 1].value >= 0 ? "+" : ""}
+                {filteredPnlData[filteredPnlData.length - 1].value.toFixed(2)} $
+              </span>
+            </span>
+          )}
+        </div>
+        {filteredPnlData.length > 0 ? (
+          <div ref={pnlChartContainerRef} />
+        ) : (
+          <p className="text-gray-400 text-sm py-10 text-center">
+            No snapshot data yet. Data will appear after the first hourly snapshot.
+          </p>
+        )}
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="p-5 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20">
@@ -386,52 +432,6 @@ export default function DashboardPage() {
         ) : (
           <p className="text-gray-400 text-sm py-10 text-center">
             No trade data yet.
-          </p>
-        )}
-      </div>
-
-      {/* Cumulative P&L Chart */}
-      <div className="mb-8 p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">Cumulative P&L</h2>
-            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs font-medium">
-              {(["24h", "7d", "30d"] as const).map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setPnlRange(range)}
-                  className={`px-3 py-1.5 transition ${
-                    pnlRange === range
-                      ? "bg-emerald-500 text-white"
-                      : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-          </div>
-          {filteredPnlData.length > 0 && (
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Latest:{" "}
-              <span
-                className={`font-medium ${
-                  filteredPnlData[filteredPnlData.length - 1].value >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-500"
-                }`}
-              >
-                {filteredPnlData[filteredPnlData.length - 1].value >= 0 ? "+" : ""}
-                {filteredPnlData[filteredPnlData.length - 1].value.toFixed(2)} $
-              </span>
-            </span>
-          )}
-        </div>
-        {filteredPnlData.length > 0 ? (
-          <div ref={pnlChartContainerRef} />
-        ) : (
-          <p className="text-gray-400 text-sm py-10 text-center">
-            No snapshot data yet. Data will appear after the first hourly snapshot.
           </p>
         )}
       </div>
