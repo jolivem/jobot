@@ -60,7 +60,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.workers.celery_app.celery worker -l INFO -Q bots --concurrency=16 -n worker@%h
+    command: celery -A app.workers.celery_app.celery worker -l INFO -Q bots --concurrency=12 -n worker@%h
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app.celery inspect ping -d worker@$$HOSTNAME --timeout 5"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 
   worker-short:
     build: .
@@ -73,6 +78,11 @@ services:
       redis:
         condition: service_healthy
     command: celery -A app.workers.celery_app.celery worker -l INFO -Q short --concurrency=2 -n worker-short@%h
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app.celery inspect ping -d worker-short@$$HOSTNAME --timeout 5"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 
   beat:
     build: .
