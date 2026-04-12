@@ -1,11 +1,18 @@
 """Pydantic schemas for simulation and screening endpoints."""
 
+from typing import Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 
+VALID_INTERVALS = Literal[
+    "1s", "1m", "3m", "5m", "15m", "30m",
+    "1h", "2h", "4h", "6h", "8h", "12h",
+    "1d", "3d", "1w", "1M",
+]
+
 
 class SimulationRequest(BaseModel):
-    interval: str = Field("1h", description="Kline interval (e.g., 1h, 4h, 1d)")
+    interval: VALID_INTERVALS = Field("1h", description="Kline interval (e.g., 1h, 4h, 1d)")
     limit: int = Field(2000, ge=100, le=11000, description="Number of klines to fetch")
     total_amount: float = Field(1000.0, gt=0, description="Simulated trading budget in USDC")
     grid_levels_options: list[int] | None = Field(None, description="Grid levels to test")
@@ -40,7 +47,7 @@ class SimulationResponse(BaseModel):
 
 
 class ScreeningRequest(BaseModel):
-    interval: str = Field("1h", description="Kline interval")
+    interval: VALID_INTERVALS = Field("1h", description="Kline interval")
     limit: int = Field(2000, ge=200, le=5000, description="Number of klines per symbol")
     total_amount: float = Field(1000.0, gt=0, description="Simulated trading budget")
 

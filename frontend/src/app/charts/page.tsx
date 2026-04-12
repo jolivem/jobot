@@ -32,6 +32,14 @@ const TIMEFRAMES = [
 
 type TimeframeKey = (typeof TIMEFRAMES)[number]["label"];
 
+function pricePrecision(price: number): { precision: number; minMove: number } {
+  if (price === 0) return { precision: 2, minMove: 0.01 };
+  const abs = Math.abs(price);
+  if (abs >= 1) return { precision: 2, minMove: 0.01 };
+  const digits = Math.max(2, Math.ceil(-Math.log10(abs)) + 2);
+  return { precision: digits, minMove: parseFloat(`1e-${digits}`) };
+}
+
 function computeGrid(maxPrice: number, minPrice: number, gridLevels: number): number[] {
   if (gridLevels <= 1 || maxPrice <= minPrice) return [];
   const step = (maxPrice - minPrice) / gridLevels;
@@ -86,6 +94,7 @@ function BotChart({ bot, trades, activeTimeframe }: BotChartProps) {
       });
       chartRef.current = chart;
 
+      const pf = pricePrecision(bot.min_price);
       const candleSeries = chart.addSeries(CandlestickSeries, {
         upColor: "#22c55e",
         downColor: "#ef4444",
@@ -93,6 +102,7 @@ function BotChart({ bot, trades, activeTimeframe }: BotChartProps) {
         borderUpColor: "#22c55e",
         wickDownColor: "#ef4444",
         wickUpColor: "#22c55e",
+        priceFormat: { type: "price", precision: pf.precision, minMove: pf.minMove },
       });
 
       candleSeries.setData(
