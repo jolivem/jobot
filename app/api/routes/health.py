@@ -28,13 +28,16 @@ def _check_redis() -> dict:
         info = cache.client.info(section="memory")
         clients = cache.client.info(section="clients")
         price_keys = cache.client.keys("price:*")
-        lock_keys = cache.client.keys("bot_lock:*")
+        bot_loop_running = cache.client.exists("bot_loop_lock")
+        tick_ms_raw = cache.client.get("bot_loop_tick_ms")
+        tick_ms = int(tick_ms_raw) if tick_ms_raw else None
         return {
             "connected": True,
             "used_memory_human": info.get("used_memory_human", "?"),
             "connected_clients": clients.get("connected_clients", 0),
             "cached_prices": len(price_keys),
-            "active_bot_locks": len(lock_keys),
+            "bot_loop_running": bool(bot_loop_running),
+            "bot_loop_tick_ms": tick_ms,
         }
     except Exception:
         return {"connected": False}

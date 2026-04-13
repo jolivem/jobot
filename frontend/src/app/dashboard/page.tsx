@@ -486,7 +486,14 @@ export default function DashboardPage() {
                 <p>Memory: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.used_memory_human}</span></p>
                 <p>Clients: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.connected_clients}</span></p>
                 <p>Prices cached: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.cached_prices}</span></p>
-                <p>Bot locks: <span className="font-medium text-gray-700 dark:text-gray-300">{health.redis.active_bot_locks}</span></p>
+                <p>Bot loop: <span className={`font-medium ${health.redis.bot_loop_running ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>{health.redis.bot_loop_running ? "Running" : "Stopped"}</span></p>
+                {health.redis.bot_loop_tick_ms != null && (
+                  <p>Tick: <span className={`font-medium ${
+                    health.redis.bot_loop_tick_ms < 1000 ? "text-emerald-600 dark:text-emerald-400"
+                    : health.redis.bot_loop_tick_ms < 2000 ? "text-amber-500"
+                    : "text-red-500"
+                  }`}>{health.redis.bot_loop_tick_ms} ms</span></p>
+                )}
               </div>
             ) : (
               <p className="text-xs text-red-500">Disconnected</p>

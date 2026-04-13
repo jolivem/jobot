@@ -28,6 +28,7 @@ celery.conf.task_routes = {
     "app.workers.tasks.restart_active_bots": {"queue": "short"},
     "app.workers.tasks.snapshot_pnl": {"queue": "short"},
     "app.workers.tasks.run_trading_bot": {"queue": "bots"},
+    "app.workers.tasks.run_all_bots": {"queue": "bots"},
 }
 
 

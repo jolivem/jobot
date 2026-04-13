@@ -344,7 +344,8 @@ export interface HealthStatus {
     used_memory_human?: string;
     connected_clients?: number;
     cached_prices?: number;
-    active_bot_locks?: number;
+    bot_loop_running?: boolean;
+    bot_loop_tick_ms?: number | null;
   };
   database: {
     connected: boolean;

@@ -16,8 +16,8 @@ class TradingBotService:
             raise ValueError("min_price must be less than max_price")
 
     def _launch_bot_task(self, bot_id: int):
-        """Launch a long-running Celery task for this bot"""
-        celery.send_task("app.workers.tasks.run_trading_bot", args=[bot_id])
+        """No-op: bots are now auto-detected by the unified run_all_bots loop."""
+        pass
 
     def create(
         self,
