@@ -327,7 +327,7 @@ def run_trading_bot(self, bot_id: int):
                 db.close()
 
             iteration += 1
-            time.sleep(1)
+            time.sleep(settings.BOT_POLL_INTERVAL)
     finally:
         cache.release_bot_lock(bot_id)
         logger.info(f"Bot {bot_id}: released lock")
