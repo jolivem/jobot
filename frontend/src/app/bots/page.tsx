@@ -351,14 +351,13 @@ export default function BotsPage() {
                 s && unrealized !== null
                   ? s.realized_profit + unrealized
                   : s ? s.realized_profit : null;
-              const monthlyPnl =
-                s && unrealized !== null
-                  ? s.monthly_realized_profit + unrealized
-                  : s ? s.monthly_realized_profit : null;
-              const monthlyPct =
-                monthlyPnl !== null && s && s.monthly_buy_cost > 0
-                  ? (monthlyPnl / s.monthly_buy_cost) * 100
+              const totalPct =
+                totalPnl !== null && bot.total_amount > 0
+                  ? (totalPnl / bot.total_amount) * 100
                   : null;
+              const daysSinceCreation = bot.created_at
+                ? Math.max(1, Math.floor((Date.now() - new Date(bot.created_at).getTime()) / 86400000))
+                : null;
 
               return (
                 <div key={bot.id} className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 space-y-3">
@@ -377,23 +376,19 @@ export default function BotsPage() {
                       {bot.is_active ? "Active" : "Inactive"}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Total P&L</p>
-                      {totalPnl !== null ? (
+                  <div className="text-sm">
+                    <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Total P&L</p>
+                    {totalPnl !== null ? (
+                      <div>
                         <span className={`font-medium ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                           {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(2)} $
                         </span>
-                      ) : <span className="text-gray-400">—</span>}
-                    </div>
-                    <div>
-                      <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Monthly P&L %</p>
-                      {monthlyPct !== null ? (
-                        <span className={`font-medium ${monthlyPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                          {monthlyPct >= 0 ? "+" : ""}{monthlyPct.toFixed(2)}%
+                        <span className="text-xs text-gray-400 ml-1">
+                          {totalPct !== null && <span>{totalPct >= 0 ? "+" : ""}{totalPct.toFixed(2)}%</span>}
+                          {daysSinceCreation !== null && <span> / {daysSinceCreation}d</span>}
                         </span>
-                      ) : <span className="text-gray-400">—</span>}
-                    </div>
+                      </div>
+                    ) : <span className="text-gray-400">—</span>}
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -428,7 +423,6 @@ export default function BotsPage() {
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Total P&L</th>
                   <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Range</th>
                   <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Chart</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Monthly P&L</th>
                   <th className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">Status</th>
                 </tr>
               </thead>
@@ -443,14 +437,13 @@ export default function BotsPage() {
                     s && unrealized !== null
                       ? s.realized_profit + unrealized
                       : s ? s.realized_profit : null;
-                  const monthlyPnl =
-                    s && unrealized !== null
-                      ? s.monthly_realized_profit + unrealized
-                      : s ? s.monthly_realized_profit : null;
-                  const monthlyPct =
-                    monthlyPnl !== null && s && s.monthly_buy_cost > 0
-                      ? (monthlyPnl / s.monthly_buy_cost) * 100
+                  const totalPct =
+                    totalPnl !== null && bot.total_amount > 0
+                      ? (totalPnl / bot.total_amount) * 100
                       : null;
+                  const daysSinceCreation = bot.created_at
+                    ? Math.max(1, Math.floor((Date.now() - new Date(bot.created_at).getTime()) / 86400000))
+                    : null;
 
                   return (
                     <tr key={bot.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
@@ -467,9 +460,15 @@ export default function BotsPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {totalPnl !== null ? (
-                          <span className={`font-medium ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                            {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(2)} $
-                          </span>
+                          <div>
+                            <span className={`font-medium ${totalPnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                              {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(2)} $
+                            </span>
+                            <div className="text-xs text-gray-400">
+                              {totalPct !== null && <span>{totalPct >= 0 ? "+" : ""}{totalPct.toFixed(2)}%</span>}
+                              {daysSinceCreation !== null && <span> / {daysSinceCreation}d</span>}
+                            </div>
+                          </div>
                         ) : <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -488,13 +487,6 @@ export default function BotsPage() {
                         >
                           Chart
                         </Link>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {monthlyPct !== null ? (
-                          <span className={`font-medium ${monthlyPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                            {monthlyPct >= 0 ? "+" : ""}{monthlyPct.toFixed(2)}%
-                          </span>
-                        ) : <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
