@@ -3,6 +3,8 @@ from app.repositories.trading_bot_repo import TradingBotRepository
 from app.repositories.trade_repo import TradeRepository
 from app.repositories.pnl_snapshot_repo import PnlSnapshotRepository
 from app.repositories.buy_level_repo import BuyLevelRepository
+from app.repositories.deleted_bot_repo import DeletedBotRepository
+from app.services.pnl_service import compute_bot_pnl
 from app.core.cache import RedisCache
 from app.workers.celery_app import celery
 
@@ -93,10 +95,37 @@ class TradingBotService:
         bot = self.repo.get_by_id(user_id, bot_id)
         if not bot:
             return False
-        # Delete associated data first (foreign key constraints)
+
+        # Archive bot with P&L before deletion
+        trade_repo = TradeRepository(self.repo.db)
+        trades = trade_repo.list_by_bot(bot_id)
+        trades.sort(key=lambda t: t.created_at)
+
+        current_price = None
+        try:
+            current_price = RedisCache().get_price(bot.symbol)
+        except Exception:
+            pass
+
+        pnl = compute_bot_pnl(trades, current_price)
+        DeletedBotRepository(self.repo.db).create(
+            user_id=user_id,
+            original_bot_id=bot_id,
+            symbol=bot.symbol,
+            min_price=bot.min_price,
+            max_price=bot.max_price,
+            total_amount=bot.total_amount,
+            sell_percentage=bot.sell_percentage,
+            grid_levels=bot.grid_levels,
+            realized_pnl=round(pnl["realized_pnl"], 6),
+            total_pnl=round(pnl["total_pnl"], 6),
+            created_at=bot.created_at,
+        )
+
+        # Delete associated data (foreign key constraints)
         PnlSnapshotRepository(self.repo.db).detach_bot(bot_id)
         BuyLevelRepository(self.repo.db).delete_by_bot(bot_id)
-        TradeRepository(self.repo.db).delete_by_bot(bot_id)
+        trade_repo.delete_by_bot(bot_id)
         # Clean up Redis state
         try:
             RedisCache().delete_bot_state(bot_id)

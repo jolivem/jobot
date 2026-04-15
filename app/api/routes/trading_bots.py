@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.config import settings
 from app.api.deps import get_current_user
-from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead, BotStats
+from app.schemas.trading_bot import TradingBotCreate, TradingBotUpdate, TradingBotRead, BotStats, DeletedBotRead
 from app.schemas.trade import TradeRead, TradeWithSymbol
 from app.services.trading_bot_service import TradingBotService
 from app.services.binance_trade_service import BinanceTradeService
@@ -48,6 +48,13 @@ def create_bot(
 @router.get("", response_model=list[TradingBotRead])
 def list_bots(db: Session = Depends(get_db), user=Depends(get_current_user)):
     return TradingBotService(db).list(user.id)
+
+
+@router.get("/deleted", response_model=list[DeletedBotRead])
+def list_deleted_bots(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """List all archived (deleted) bots for the current user."""
+    from app.repositories.deleted_bot_repo import DeletedBotRepository
+    return DeletedBotRepository(db).list_by_user(user.id)
 
 
 @router.get("/stats", response_model=list[BotStats])

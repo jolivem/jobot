@@ -34,6 +34,23 @@ class BotStats(BaseModel):
     open_positions_value: float | None
 
 
+class DeletedBotRead(BaseModel):
+    id: int
+    symbol: str
+    min_price: float
+    max_price: float
+    total_amount: float
+    sell_percentage: float
+    grid_levels: int
+    realized_pnl: float
+    total_pnl: float
+    created_at: datetime
+    deleted_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class TradingBotRead(BaseModel):
     id: int
     user_id: int

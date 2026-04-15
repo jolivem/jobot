@@ -37,6 +37,7 @@ export default function Navbar() {
                 <Link href="/bots" className={linkClass}>Bots</Link>
                 <Link href="/charts" className={linkClass}>Charts</Link>
                 <Link href="/trades" className={linkClass}>Trades</Link>
+                <Link href="/history" className={linkClass}>History</Link>
                 <Link href="/settings" className={linkClass}>Settings</Link>
                 <button onClick={logout} className="ml-2 px-4 py-2 text-sm font-medium text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition">Logout</button>
               </>
@@ -76,6 +77,7 @@ export default function Navbar() {
               <Link href="/bots" onClick={close} className={mobileLinkClass}>Bots</Link>
               <Link href="/charts" onClick={close} className={mobileLinkClass}>Charts</Link>
               <Link href="/trades" onClick={close} className={mobileLinkClass}>Trades</Link>
+              <Link href="/history" onClick={close} className={mobileLinkClass}>History</Link>
               <Link href="/settings" onClick={close} className={mobileLinkClass}>Settings</Link>
               <button onClick={() => { logout(); close(); }} className="block w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">Logout</button>
             </>

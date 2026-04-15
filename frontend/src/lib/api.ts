@@ -56,6 +56,20 @@ export interface TradingBot {
   created_at: string;
 }
 
+export interface DeletedBot {
+  id: number;
+  symbol: string;
+  min_price: number;
+  max_price: number;
+  total_amount: number;
+  sell_percentage: number;
+  grid_levels: number;
+  realized_pnl: number;
+  total_pnl: number;
+  created_at: string;
+  deleted_at: string;
+}
+
 export interface TradingBotCreate {
   symbol: string;
   max_price: number;
@@ -255,6 +269,11 @@ export async function verifyBinanceKeys(): Promise<{ valid: boolean }> {
 export async function listBots(): Promise<TradingBot[]> {
   const response = await authFetch(`${API_URL}/trading-bots`);
   return handleResponse<TradingBot[]>(response);
+}
+
+export async function listDeletedBots(): Promise<DeletedBot[]> {
+  const response = await authFetch(`${API_URL}/trading-bots/deleted`);
+  return handleResponse<DeletedBot[]>(response);
 }
 
 export async function createBot(data: TradingBotCreate): Promise<TradingBot> {
