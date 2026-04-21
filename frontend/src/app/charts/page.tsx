@@ -28,6 +28,7 @@ const TIMEFRAMES = [
   { label: "24h", interval: "5m", limit: 288, snapSeconds: 300 },
   { label: "7d", interval: "1h", limit: 168, snapSeconds: 3600 },
   { label: "60d", interval: "4h", limit: 360, snapSeconds: 14400 },
+  { label: "180d", interval: "1d", limit: 180, snapSeconds: 86400 },
 ] as const;
 
 type TimeframeKey = (typeof TIMEFRAMES)[number]["label"];

@@ -28,6 +28,7 @@ const TIMEFRAMES = [
   { label: "24h", interval: "5m", limit: 288, snapSeconds: 300 },
   { label: "7d", interval: "1h", limit: 168, snapSeconds: 3600 },
   { label: "60d", interval: "4h", limit: 360, snapSeconds: 14400 },
+  { label: "180d", interval: "1d", limit: 180, snapSeconds: 86400 },
 ] as const;
 
 type TimeframeKey = (typeof TIMEFRAMES)[number]["label"];
@@ -365,7 +366,7 @@ export default function ChartPage() {
   }
 
   const tf = TIMEFRAMES.find((t) => t.label === activeTimeframe)!;
-  const intervalLabel = tf.interval === "5m" ? "5min" : tf.interval === "1h" ? "1h" : "4h";
+  const intervalLabel = tf.interval === "5m" ? "5min" : tf.interval === "1h" ? "1h" : tf.interval === "4h" ? "4h" : "1d";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
