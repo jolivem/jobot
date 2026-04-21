@@ -51,27 +51,37 @@ def decide_trade(
     if not positions:
         if bot.min_price <= current_price <= bot.max_price:
             qty = bot.total_amount / bot.grid_levels / current_price
+
+            # Reset all levels to pending for new cycle.
+            # Assign first buy to the highest grid level at or below current_price,
+            # so the next buy targets a level with proper grid-step distance.
+            for lvl in buy_levels:
+                lvl["status"] = "pending"
+            first_level_index = -1
+            for lvl in buy_levels:
+                if lvl["price"] <= current_price:
+                    first_level_index = lvl["level_index"]
+                    lvl["status"] = "bought"
+                    break
+
             decisions.append({
                 "side": "buy",
                 "quantity": qty,
                 "entry_price": current_price,
-                "grid_level": -1,
+                "grid_level": first_level_index,
             })
             positions.append({
                 "qty": qty,
                 "entry": current_price,
                 "highest": current_price,
                 "fee": qty * current_price * fee_pct,
-                "grid_level": -1,
+                "grid_level": first_level_index,
             })
-            # Reset all levels to pending for new cycle
-            for lvl in buy_levels:
-                lvl["status"] = "pending"
             lowest_price = current_price
             logger.info(
                 f"Bot {bot.id}: BUY @ {current_price:.8f} "
                 f"(qty: {qty:.6f}, positions: {len(positions)}, "
-                f"grid: {len(buy_levels)} levels)"
+                f"level: {first_level_index}/{len(buy_levels)})"
             )
         state["positions"] = positions
         state["lowest_price"] = lowest_price
