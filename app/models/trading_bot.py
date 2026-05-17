@@ -18,6 +18,7 @@ class TradingBot(Base):
     total_amount: Mapped[float] = mapped_column(Float, nullable=False)  # Total amount to trade
     sell_percentage: Mapped[float] = mapped_column(Float, nullable=False)  # % increase before selling
     grid_levels: Mapped[int] = mapped_column(Integer, nullable=False, default=10)  # number of grid buy levels
+    sell_only: Mapped[int] = mapped_column(Integer, nullable=False, default=0)  # 1=disable buys, 0=normal
 
     created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

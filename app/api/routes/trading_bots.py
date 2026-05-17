@@ -259,6 +259,7 @@ def update_bot(
             sell_percentage=payload.sell_percentage,
             grid_levels=payload.grid_levels,
             is_active=payload.is_active,
+            sell_only=payload.sell_only,
         )
         if not bot:
             raise HTTPException(status_code=404, detail="Trading bot not found")

@@ -60,6 +60,7 @@ class TradingBotService:
         sell_percentage: float | None = None,
         grid_levels: int | None = None,
         is_active: int | None = None,
+        sell_only: int | None = None,
     ):
         bot = self.repo.get_by_id(user_id, bot_id)
         if not bot:
@@ -80,6 +81,7 @@ class TradingBotService:
             sell_percentage=sell_percentage,
             grid_levels=grid_levels,
             is_active=is_active,
+            sell_only=sell_only,
         )
 
         # Launch task if bot was reactivated

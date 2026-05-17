@@ -53,6 +53,7 @@ export interface TradingBot {
   total_amount: number;
   sell_percentage: number;
   grid_levels: number;
+  sell_only: number;
   created_at: string;
 }
 
@@ -86,6 +87,7 @@ export interface TradingBotUpdate {
   sell_percentage?: number;
   grid_levels?: number;
   is_active?: number;
+  sell_only?: number;
 }
 
 export interface BotStats {

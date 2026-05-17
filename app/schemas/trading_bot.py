@@ -19,6 +19,7 @@ class TradingBotUpdate(BaseModel):
     sell_percentage: float | None = Field(None, gt=0, le=100)
     grid_levels: int | None = Field(None, ge=1, le=100)
     is_active: int | None = Field(None, ge=0, le=1)
+    sell_only: int | None = Field(None, ge=0, le=1)
 
 
 class BotStats(BaseModel):
@@ -61,6 +62,7 @@ class TradingBotRead(BaseModel):
     total_amount: float
     sell_percentage: float
     grid_levels: int
+    sell_only: int
     created_at: datetime
 
     class Config:

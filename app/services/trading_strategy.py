@@ -47,9 +47,11 @@ def decide_trade(
     sell_pullback_pct = settings.SELL_PULLBACK_PCT
     fee_pct = settings.FEE_PCT
 
+    sell_only = bool(getattr(bot, "sell_only", 0))
+
     # === No positions: first buy or restart after all sold ===
     if not positions:
-        if bot.min_price <= current_price <= bot.max_price:
+        if not sell_only and bot.min_price <= current_price <= bot.max_price:
             qty = bot.total_amount / bot.grid_levels / current_price
 
             # Reset all levels to pending for new cycle.
@@ -141,7 +143,7 @@ def decide_trade(
         return decisions, state
 
     # === Check buys: find the best level to buy (pending or sold) ===
-    if previous_price is None or len(positions) >= bot.grid_levels:
+    if sell_only or previous_price is None or len(positions) >= bot.grid_levels:
         state["positions"] = positions
         state["lowest_price"] = lowest_price
         state["buy_levels"] = buy_levels

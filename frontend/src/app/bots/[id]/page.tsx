@@ -39,6 +39,7 @@ export default function BotDetailPage() {
 
   // Action loading states
   const [toggling, setToggling] = useState(false);
+  const [togglingSellOnly, setTogglingSellOnly] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmEmergencySell, setConfirmEmergencySell] = useState(false);
@@ -85,6 +86,20 @@ export default function BotDetailPage() {
       showToast(err instanceof Error ? err.message : "Failed to toggle bot", "error");
     } finally {
       setToggling(false);
+    }
+  };
+
+  const handleToggleSellOnly = async () => {
+    if (!bot) return;
+    setTogglingSellOnly(true);
+    try {
+      const newSellOnly = bot.sell_only ? 0 : 1;
+      const updated = await updateBot(bot.id, { sell_only: newSellOnly });
+      setBot(updated);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to toggle sell only", "error");
+    } finally {
+      setTogglingSellOnly(false);
     }
   };
 
@@ -260,6 +275,12 @@ export default function BotDetailPage() {
       {stats && (
         <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/5 to-teal-500/5 space-y-2 text-sm mb-6 border border-emerald-500/20">
           <h2 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-400">Monitoring</h2>
+          {bot.sell_only ? (
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">Mode</span>
+              <span className="font-medium text-amber-600 dark:text-amber-400">Sell only (buys disabled)</span>
+            </div>
+          ) : null}
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Created</span>
             <span className="font-medium">
@@ -522,6 +543,18 @@ export default function BotDetailPage() {
             className="flex-1 py-2 px-3 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
           >
             Edit
+          </button>
+          <button
+            onClick={handleToggleSellOnly}
+            disabled={togglingSellOnly}
+            className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition disabled:opacity-50 ${
+              bot.sell_only
+                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 hover:bg-amber-200 dark:hover:bg-amber-900/40"
+                : "border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
+            title={bot.sell_only ? "Re-enable buys" : "Disable buys (only sell existing positions)"}
+          >
+            {togglingSellOnly ? "..." : bot.sell_only ? "Sell only ✓" : "Sell only"}
           </button>
           {confirmDelete ? (
             <div className="flex gap-1">
